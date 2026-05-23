@@ -115,21 +115,15 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 /* ── HOTSPOT PINS ── */
 .hs-pin-wrap {
   position: absolute; transform: translate(-50%,-50%); z-index: 20;
-}
-.hs-pin {
-  width: 30px; height: 30px; border-radius: 50%;
-  border: 2px solid; background: rgba(8,10,14,.88);
-  display: flex; align-items: center; justify-content: center;
-  font-size: .65rem; font-family: var(--mono); font-weight: 500;
-  cursor: pointer; transition: transform .15s, box-shadow .15s;
   -webkit-tap-highlight-color: transparent;
 }
-.hs-pin:active { transform: scale(.88); }
-.hs-pin.active { box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
-.hs-pin.tomada  { border-color: var(--amber);  color: var(--amber);  }
-.hs-pin.agua    { border-color: var(--accent); color: var(--accent); }
-.hs-pin.equipamento { border-color: var(--green); color: var(--green); }
-.hs-pin.nota    { border-color: var(--purple); color: var(--purple); }
+.hs-pin-wrap svg {
+  display: block; cursor: pointer;
+  transition: transform .15s, filter .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.hs-pin-wrap svg:active { transform: scale(.88); }
+.hs-pin-wrap.active svg { filter: drop-shadow(0 0 5px rgba(255,255,255,.3)); transform: scale(1.15); }
 
 /* ── POPUP ── */
 .hs-popup {
@@ -365,6 +359,50 @@ const FB = {
 const app = initializeApp(FB);
 const db  = getFirestore(app);
 
+// ── TIPOS DE HOTSPOT ──────────────────────────
+const TIPOS_BUILTIN = [
+  { id:'equipamento', label:'Equipamento',    forma:'circle',  simbolo:'N',  cor:'#2dd898' },
+  { id:'agua_fria',   label:'Água Fria',       forma:'drop',    simbolo:'❄',  cor:'#38bdf8' },
+  { id:'agua_quente', label:'Água Quente',     forma:'drop',    simbolo:'♨',  cor:'#fb923c' },
+  { id:'esgoto',      label:'Esgoto',          forma:'hex',     simbolo:'↓',  cor:'#6b7280' },
+  { id:'tomada',      label:'Tomada',          forma:'square',  simbolo:'⚡', cor:'#e8a234' },
+  { id:'circuito',    label:'Circuito Ded.',   forma:'square',  simbolo:'◎',  cor:'#b45309' },
+  { id:'led',         label:'Fita LED',        forma:'square',  simbolo:'∿',  cor:'#fde047' },
+  { id:'gas',         label:'Gás',             forma:'diamond', simbolo:'◈',  cor:'#f59e0b' },
+  { id:'nota_imp',    label:'Nota Importante', forma:'square',  simbolo:'!',  cor:'#f05252' },
+  { id:'nota_info',   label:'Nota Consultiva', forma:'square',  simbolo:'i',  cor:'#9d7dea' },
+  { id:'confirmado',  label:'Confirmado',      forma:'square',  simbolo:'✓',  cor:'#2dd898' },
+];
+
+function getTipoById(id) {
+  return TIPOS_BUILTIN.find(t=>t.id===id) || S.tiposCustom.find(t=>t.id===id) || TIPOS_BUILTIN[0];
+}
+
+function pinSVG(tipoId, label, size=30) {
+  const t   = getTipoById(tipoId);
+  const cor = t.cor;
+  const sim = (tipoId==='equipamento') ? label : t.simbolo;
+  const cx  = size/2, cy = size/2, r = size/2 - 2;
+  const fill= 'rgba(8,10,14,.92)';
+  let shape = '';
+  if (t.forma==='circle') {
+    shape = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='drop') {
+    shape = `<ellipse cx="${cx}" cy="${cy-1}" rx="${r}" ry="${r+2}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='hex') {
+    const pts = Array.from({length:6},(_,i)=>{const a=(60*i-30)*Math.PI/180;return `${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`;}).join(' ');
+    shape = `<polygon points="${pts}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='square') {
+    const rr=Math.round(size*0.15);
+    shape = `<rect x="2" y="2" width="${size-4}" height="${size-4}" rx="${rr}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='diamond') {
+    shape = `<polygon points="${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  }
+  const fs = sim && sim.length>1 ? 9 : 11;
+  const text= `<text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle" fill="${cor}" font-size="${fs}" font-family="DM Mono,monospace" font-weight="600">${sim}</text>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">${shape}${text}</svg>`;
+}
+
 // ─── STATE ─────────────────────────────────────
 const S = {
   obraId: '', obra: null,
@@ -493,19 +531,31 @@ function renderPins(idx) {
   if (!inner) return;
   inner.querySelectorAll('.hs-pin-wrap').forEach(el=>el.remove());
 
-  const key = S.alcados[idx]?.key;
-  const hss = key ? (S.hotspots[key]||[]) : [];
+  const key  = S.alcados[idx]?.key;
+  const hss  = key ? (S.hotspots[key]||[]) : [];
+  let eqCount = 0;
+
   hss.forEach((h, i) => {
+    const isEquip = h.tipo==='equipamento';
+    if (isEquip) eqCount++;
+    const label = isEquip ? String(eqCount) : String(i+1);
+
     const wrap = document.createElement('div');
-    wrap.className = 'hs-pin-wrap';
+    wrap.className  = 'hs-pin-wrap';
     wrap.style.left = h.x+'%';
     wrap.style.top  = h.y+'%';
-    const tc = S.tiposCustom.find(t=>t.id===h.tipo);
-    const label = tc ? (tc.icone||i+1) : (i+1);
-    wrap.innerHTML = `<div class="hs-pin ${h.tipo}" data-idx="${idx}" data-id="${h.id}">${label}</div>`;
-    wrap.querySelector('.hs-pin').addEventListener('click', ev => {
+    wrap.innerHTML  = pinSVG(h.tipo, label, 32);
+
+    wrap.addEventListener('click', ev => {
       ev.stopPropagation();
-      togglePopup(h, wrap, idx);
+      const wasActive = wrap.classList.contains('active');
+      document.querySelectorAll('.hs-pin-wrap').forEach(w=>w.classList.remove('active'));
+      if (!wasActive) {
+        wrap.classList.add('active');
+        togglePopup(h, wrap, idx);
+      } else {
+        closePopup();
+      }
     });
     inner.appendChild(wrap);
   });
@@ -599,13 +649,14 @@ function togglePopup(h, pinWrap, slideIdx) {
   const tc   = S.tiposCustom.find(t=>t.id===h.tipo);
   const tipo = tc ? tc.nome : h.tipo;
 
+  const tipoObj = getTipoById(h.tipo);
   popup.innerHTML = `
     <div class="popup-header">
-      <div class="popup-dot ${h.tipo}"></div>
+      <div style="flex-shrink:0">${pinSVG(h.tipo, '', 22)}</div>
       <div class="popup-label">${h.label}</div>
       <button class="popup-close" onclick="closePopup()">✕</button>
     </div>
-    <div class="popup-tipo">${tipo}</div>
+    <div class="popup-tipo" style="color:${tipoObj.cor}">${tipoObj.label}</div>
     ${h.tec ? `<div class="popup-tec">${h.tec}</div>` : '<div style="font-size:.72rem;color:var(--text3)">Sem informação técnica.</div>'}
   `;
 

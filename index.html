@@ -265,25 +265,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 
 /* MARKERS */
 .hs-marker { position: absolute; transform: translate(-50%, -50%); z-index: 10; }
-.hs-pin {
-  width: 26px; height: 26px; border-radius: 50%; border: 2px solid;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .62rem; font-family: var(--mono); font-weight: 500;
-  cursor: pointer; transition: all .15s;
-  background: rgba(12,14,18,.9);
-}
-.hs-pin.tomada     { border-color: var(--amber);  color: var(--amber);  }
-.hs-pin.agua       { border-color: var(--accent); color: var(--accent); }
-.hs-pin.equipamento{ border-color: var(--green);  color: var(--green);  }
-.hs-pin.nota       { border-color: var(--purple); color: var(--purple); }
-.hs-pin:hover, .hs-pin.active {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 3px rgba(255,255,255,.1);
-}
-.hs-pin.active.tomada      { background: var(--amber);  color: #000; }
-.hs-pin.active.agua        { background: var(--accent); color: #fff; }
-.hs-pin.active.equipamento { background: var(--green);  color: #000; }
-.hs-pin.active.nota        { background: var(--purple); color: #fff; }
+/* ── PINS SVG ── */
+.hs-marker svg { transition: transform .15s, filter .15s; cursor: pointer; display: block; }
+.hs-marker svg:hover { transform: scale(1.2); filter: drop-shadow(0 0 4px rgba(255,255,255,.2)); }
+.hs-marker svg.active { transform: scale(1.25); filter: drop-shadow(0 0 6px rgba(255,255,255,.3)); }
 .tipo-custom-opt {
   padding: .35rem .55rem; border: 1px solid var(--border); border-radius: 4px;
   font-size: .68rem; cursor: pointer; transition: all .15s;
@@ -550,12 +535,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
       <div class="rp-body">
         <div>
           <div class="panel-label" style="margin-bottom:.5rem">Tipo</div>
-          <div class="tipo-grid">
-            <div class="tipo-opt sel-tomada" data-tipo="tomada" onclick="selTipo('tomada')">⚡ Tomada</div>
-            <div class="tipo-opt" data-tipo="agua" onclick="selTipo('agua')">💧 Água</div>
-            <div class="tipo-opt" data-tipo="equipamento" onclick="selTipo('equipamento')">📦 Equip.</div>
-            <div class="tipo-opt" data-tipo="nota" onclick="selTipo('nota')">📝 Nota</div>
-          </div>
+          <div id="tipo-grid-builtin" style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem"></div>
         </div>
         <div style="margin-top:-.25rem">
           <div id="tipos-custom-grid" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.3rem"></div>
@@ -712,6 +692,109 @@ const FB = {
 const app  = initializeApp(FB);
 const db   = getFirestore(app);
 const auth = getAuth(app);
+
+// ══════════════════════════════════════════════
+// SISTEMA DE TIPOS DE HOTSPOT
+// ══════════════════════════════════════════════
+const TIPOS_BUILTIN = [
+  { id:'equipamento', label:'Equipamento',      forma:'circle',  simbolo:'N',  cor:'#2dd898', grupo:'equip'  },
+  { id:'agua_fria',   label:'Água Fria',         forma:'drop',    simbolo:'❄',  cor:'#38bdf8', grupo:'hidra'  },
+  { id:'agua_quente', label:'Água Quente',       forma:'drop',    simbolo:'♨',  cor:'#fb923c', grupo:'hidra'  },
+  { id:'esgoto',      label:'Esgoto',            forma:'hex',     simbolo:'↓',  cor:'#6b7280', grupo:'hidra'  },
+  { id:'tomada',      label:'Tomada',            forma:'square',  simbolo:'⚡', cor:'#e8a234', grupo:'elec'   },
+  { id:'circuito',    label:'Circuito Ded.',     forma:'square',  simbolo:'◎',  cor:'#b45309', grupo:'elec'   },
+  { id:'led',         label:'Fita LED',          forma:'square',  simbolo:'∿',  cor:'#fde047', grupo:'elec'   },
+  { id:'gas',         label:'Gás',               forma:'diamond', simbolo:'◈',  cor:'#f59e0b', grupo:'outros' },
+  { id:'nota_imp',    label:'Nota Importante',   forma:'square',  simbolo:'!',  cor:'#f05252', grupo:'notas'  },
+  { id:'nota_info',   label:'Nota Consultiva',   forma:'square',  simbolo:'i',  cor:'#9d7dea', grupo:'notas'  },
+  { id:'confirmado',  label:'Confirmado',        forma:'square',  simbolo:'✓',  cor:'#2dd898', grupo:'notas'  },
+];
+
+function getTipoById(id) {
+  return TIPOS_BUILTIN.find(t=>t.id===id) || S.tiposCustom.find(t=>t.id===id) || TIPOS_BUILTIN[0];
+}
+
+// Gera SVG do pin com a forma correcta
+function pinSVG(tipo, label, size=30, isActive=false) {
+  const t   = typeof tipo === 'string' ? getTipoById(tipo) : tipo;
+  const cor = t.cor;
+  const sim = (tipo==='equipamento'||t.id==='equipamento') ? label : t.simbolo;
+  const cx  = size/2, cy = size/2, r = size/2 - 2;
+  const fill= isActive ? cor : 'rgba(8,10,14,.92)';
+  const tcol= isActive ? '#000' : cor;
+  let shape = '';
+
+  if (t.forma==='circle') {
+    shape = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='drop') {
+    // Gota: círculo com ponta inferior
+    const pr = r*0.72;
+    shape = `<path d="M${cx},${cy-r} a${r},${r} 0 1,1 0,${r*1.6} L${cx},${cy+r} a${r},${r} 0 1,1 0,-${r*1.6}Z" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+    // Simplificado: elipse vertical
+    shape = `<ellipse cx="${cx}" cy="${cy-2}" rx="${r}" ry="${r+2}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='hex') {
+    const pts = Array.from({length:6},(_,i)=>{
+      const a = (60*i-30)*Math.PI/180;
+      return `${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`;
+    }).join(' ');
+    shape = `<polygon points="${pts}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='square') {
+    const rr = Math.round(size*0.15);
+    shape = `<rect x="2" y="2" width="${size-4}" height="${size-4}" rx="${rr}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  } else if (t.forma==='diamond') {
+    shape = `<polygon points="${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  }
+
+  const fs  = sim && sim.length > 1 ? 9 : 11;
+  const fw  = '600';
+  const text= `<text x="${cx}" y="${cy+4}" text-anchor="middle" dominant-baseline="middle" fill="${tcol}" font-size="${fs}" font-family="DM Mono,monospace" font-weight="${fw}">${sim}</text>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="display:block">${shape}${text}</svg>`;
+}
+
+// Render da grelha de tipos no formulário
+function renderTipoGrid() {
+  const el = document.getElementById('tipo-grid-builtin');
+  if (!el) return;
+  const grupos = ['equip','hidra','elec','outros','notas'];
+  const nomes  = {equip:'Equipamento',hidra:'Hidráulica',elec:'Eléctrico',outros:'Outros',notas:'Notas'};
+  el.innerHTML = '';
+  // Linha de separador por grupo
+  let lastGrupo = null;
+  // Flat list com separadores
+  el.style.gridTemplateColumns = '1fr 1fr';
+  TIPOS_BUILTIN.forEach(t => {
+    if (t.grupo !== lastGrupo) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'grid-column:1/-1;font-size:.58rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text3);padding:.3rem 0 .1rem';
+      sep.textContent = nomes[t.grupo]||t.grupo;
+      el.appendChild(sep);
+      lastGrupo = t.grupo;
+    }
+    const btn = document.createElement('div');
+    btn.className = 'tipo-opt-v2';
+    btn.dataset.tipo = t.id;
+    const isSel = currentTipo === t.id;
+    btn.style.cssText = `display:flex;align-items:center;gap:.4rem;padding:.3rem .5rem;border:1px solid ${isSel?t.cor:'var(--border)'};border-radius:5px;cursor:pointer;background:${isSel?t.cor+'22':'transparent'};transition:all .15s;font-size:.7rem;color:${isSel?t.cor:'var(--text2)'}`;
+    btn.innerHTML = pinSVG(t, '', 18, isSel) + `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.label}</span>`;
+    btn.onclick = () => selTipo(t.id);
+    el.appendChild(btn);
+  });
+  // Tipos custom
+  if (S.tiposCustom.length) {
+    const sep = document.createElement('div');
+    sep.style.cssText = 'grid-column:1/-1;font-size:.58rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text3);padding:.3rem 0 .1rem';
+    sep.textContent = 'Personalizados';
+    el.appendChild(sep);
+    S.tiposCustom.forEach(t => {
+      const btn = document.createElement('div');
+      const isSel = currentTipo === t.id;
+      btn.style.cssText = `display:flex;align-items:center;gap:.4rem;padding:.3rem .5rem;border:1px solid ${isSel?t.cor:'var(--border)'};border-radius:5px;cursor:pointer;background:${isSel?t.cor+'22':'transparent'};transition:all .15s;font-size:.7rem;color:${isSel?t.cor:'var(--text2)'}`;
+      btn.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:${t.cor};flex-shrink:0"></span><span>${t.label}</span>`;
+      btn.onclick = () => selTipo(t.id);
+      el.appendChild(btn);
+    });
+  }
+}
 
 // ─── AUTH ──────────────────────────────────────
 onAuthStateChanged(auth, u => {
@@ -1000,18 +1083,14 @@ function openRp(editMode) {
   if (row) row.style.display = editMode ? 'none' : 'flex';
   if (!editMode) { const cb=document.getElementById('hs-add-biblio'); if(cb) cb.checked=false; }
   initPaleta();
-  renderTiposCustomGrid();
+  renderTipoGrid();
 }
 window.closeRp = () => { document.getElementById('right-panel').classList.remove('open'); S.pendingXY=null; S.editHsId=null; };
 
 let currentTipo='tomada';
 window.selTipo = t => {
-  currentTipo=t;
-  // Tipos fixos
-  document.querySelectorAll('.tipo-opt').forEach(el=>{
-    el.className='tipo-opt'+(el.dataset.tipo===t?` sel-${t}`:'');
-  });
-  // Tipos custom
+  currentTipo = t;
+  renderTipoGrid();
   renderTiposCustomGrid();
 };
 
@@ -1081,22 +1160,34 @@ window.deleteHs = (id,e) => {
 
 // ─── MARKERS ───────────────────────────────────
 function renderMarkers() {
-  const wrap=document.getElementById('image-wrap');
+  const wrap = document.getElementById('image-wrap');
   wrap.querySelectorAll('.hs-marker').forEach(el=>el.remove());
-  const hss=S.activeKey?(S.hotspots[S.activeKey]||[]):[];
-  hss.forEach((h,i)=>{
-    const m=document.createElement('div');
-    m.className='hs-marker'; m.id='mk-'+h.id;
-    m.style.left=h.x+'%'; m.style.top=h.y+'%';
-    const tc = S.tiposCustom.find(t=>t.id===h.tipo);
-    if(tc) injectPinCss(tc);
-    m.innerHTML=`<div class="hs-pin draggable ${h.tipo}" title="${h.label}">${tc?(tc.icone||i+1):(i+1)}</div>`;
-    const pin=m.querySelector('.hs-pin');
-    // Click para editar (apenas sem drag)
-    pin.addEventListener('click', ev=>{ ev.stopPropagation(); if(!S._didDrag) editHs(h.id); S._didDrag=false; });
-    // Drag para mover
-    pin.addEventListener('mousedown', ev=>startDrag(ev,h.id));
-    wrap.appendChild(m);
+  const hss  = S.activeKey ? (S.hotspots[S.activeKey]||[]) : [];
+  let eqCount = 0;
+
+  hss.forEach((h, i) => {
+    const isEquip = h.tipo==='equipamento';
+    if (isEquip) eqCount++;
+    const label = isEquip ? String(eqCount) : String(i+1);
+
+    const marker = document.createElement('div');
+    marker.className = 'hs-marker';
+    marker.id        = 'mk-'+h.id;
+    marker.style.cssText = `position:absolute;transform:translate(-50%,-50%);z-index:10;left:${h.x}%;top:${h.y}%`;
+
+    const svgWrap = document.createElement('div');
+    svgWrap.innerHTML = pinSVG(h.tipo, label, 30);
+    const svg = svgWrap.firstChild;
+    if (svg) {
+      svg.style.transition = 'transform .15s, filter .15s';
+      svg.style.cursor     = 'grab';
+      svg.addEventListener('mouseenter', () => { if(!S.dragging) svg.style.transform='scale(1.18)'; });
+      svg.addEventListener('mouseleave', () => { if(!S.dragging) svg.style.transform=''; });
+      svg.addEventListener('click', ev => { ev.stopPropagation(); if(!S._didDrag) editHs(h.id); S._didDrag=false; });
+      svg.addEventListener('mousedown', ev => startDrag(ev, h.id));
+    }
+    marker.appendChild(svgWrap);
+    wrap.appendChild(marker);
   });
 }
 
