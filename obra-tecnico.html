@@ -82,16 +82,21 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
-  opacity: 0; pointer-events: none;
-  transition: opacity .4s ease, transform .4s cubic-bezier(.4,0,.2,1);
-  transform: scale(.97);
+  /* Estado base — invisível e deslocado */
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.96);
+  transition: opacity .38s ease, transform .38s cubic-bezier(.4,0,.2,1);
 }
+/* Slide activo — visível */
 .slide.slide-active {
-  opacity: 1; pointer-events: auto;
+  opacity: 1;
+  pointer-events: auto;
   transform: scale(1);
 }
-.slide.slide-enter-left  { transform: translateX(5%)  scale(.97); }
-.slide.slide-enter-right { transform: translateX(-5%) scale(.97); }
+/* Preparação antes de entrar — JS adiciona esta classe, depois remove para disparar a transição */
+.slide.slide-prepare-left  { transform: translateX(6%)  scale(.96); opacity: 0; }
+.slide.slide-prepare-right { transform: translateX(-6%) scale(.96); opacity: 0; }
 .slide-inner {
   position: relative; display: inline-block; line-height: 0;
   transform-origin: center center;
@@ -508,52 +513,37 @@ function renderPins(idx) {
 
 // ─── NAVIGATION ────────────────────────────────
 window.goToSlide = function goToSlide(idx, animate=true) {
+  idx = Number(idx);
   if (idx < 0 || idx >= S.alcados.length) return;
   const slides = document.querySelectorAll('.slide');
   if (!slides.length) return;
 
-  const dir    = idx > S.idx ? 'left' : 'right';
   const oldIdx = S.idx;
-  S.idx = Number(idx);
+  if (idx === oldIdx && animate) return;
+  const dir = idx > oldIdx ? 'left' : 'right';
+  S.idx = idx;
 
-  if (!animate || oldIdx === S.idx) {
-    slides.forEach((s,i) => s.className = 'slide' + (i===S.idx?' slide-active':''));
+  if (!animate) {
+    slides.forEach((s,i) => s.className = 'slide'+(i===idx?' slide-active':''));
     updateNav(); closePopup(); return;
   }
 
-  const oldSlide = slides[oldIdx];
-  const newSlide = slides[S.idx];
+  const prepClass = dir==='left' ? 'slide-prepare-left' : 'slide-prepare-right';
 
-  // Preparar novo slide fora do ecrã
-  if (newSlide) {
-    newSlide.classList.add(dir==='left' ? 'slide-enter-left' : 'slide-enter-right');
-    newSlide.style.opacity = '0';
-  }
-
-  // Fade out do slide actual
-  if (oldSlide) {
-    oldSlide.style.transition = 'opacity .25s ease, transform .25s ease';
-    oldSlide.style.opacity    = '0';
-    oldSlide.style.transform  = dir==='left' ? 'translateX(-5%) scale(.97)' : 'translateX(5%) scale(.97)';
-  }
+  // 1. Preparar novo slide na posição inicial (fora do ecrã, sem transição)
+  slides[idx].classList.add(prepClass);
 
   requestAnimationFrame(() => {
+    // 2. Remover active do slide actual (vai desaparecer via CSS)
+    if (slides[oldIdx]) slides[oldIdx].classList.remove('slide-active');
+
     requestAnimationFrame(() => {
-      // Activar novo slide
-      if (newSlide) {
-        newSlide.classList.remove('slide-enter-left','slide-enter-right');
-        newSlide.classList.add('slide-active');
-      }
-      setTimeout(() => {
-        // Limpar tudo
-        slides.forEach((s,i) => {
-          s.className = 'slide' + (i===S.idx?' slide-active':'');
-          s.style.opacity   = '';
-          s.style.transform = '';
-          s.style.transition= '';
-        });
-        updateNav(); closePopup();
-      }, 420);
+      // 3. Mover novo slide para posição final (CSS anima)
+      slides[idx].classList.remove(prepClass);
+      slides[idx].classList.add('slide-active');
+
+      // 4. Limpar após transição
+      setTimeout(() => { updateNav(); closePopup(); }, 420);
     });
   });
 }
