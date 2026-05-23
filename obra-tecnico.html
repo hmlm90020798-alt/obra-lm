@@ -50,9 +50,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 /* ── ALCADO COUNTER ── */
 .alcado-counter {
   position: fixed; top: 52px; left: 0; right: 0; z-index: 90;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: .5rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border);
-  height: 44px;
+  display: flex; align-items: center;
+  padding: .5rem .75rem; background: var(--surface); border-bottom: 1px solid var(--border);
+  height: 44px; gap: .3rem;
 }
 .alcado-name { font-size: .82rem; font-weight: 600; }
 .alcado-nav { display: flex; align-items: center; gap: .5rem; }
@@ -77,14 +77,19 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 /* Slides container */
 .slides-wrap {
   display: flex; height: 100%;
-  transition: transform .35s cubic-bezier(.4,0,.2,1);
   will-change: transform;
+  position: relative;
 }
 .slide {
   flex-shrink: 0; width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   position: relative; overflow: hidden;
+  transition: opacity .35s ease, transform .35s cubic-bezier(.4,0,.2,1);
 }
+.slide.slide-out-left  { opacity: 0; transform: translateX(-6%) scale(.97); }
+.slide.slide-out-right { opacity: 0; transform: translateX(6%)  scale(.97); }
+.slide.slide-in        { opacity: 0; transform: scale(.97); }
+.slide.slide-active    { opacity: 1; transform: translateX(0) scale(1); }
 .slide-inner {
   position: relative; display: inline-block; line-height: 0;
   transform-origin: center center;
@@ -273,12 +278,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 
 <!-- ALCADO NAV BAR -->
 <div class="alcado-counter">
-  <span class="alcado-name" id="alcado-name">—</span>
-  <div class="alcado-nav">
-    <button class="nav-btn" id="btn-prev" onclick="navAlcado(-1)" disabled>‹</button>
-    <span class="alcado-idx" id="alcado-idx">—</span>
-    <button class="nav-btn" id="btn-next" onclick="navAlcado(1)">›</button>
-  </div>
+  <button class="nav-btn" id="btn-prev" onclick="navAlcado(-1)" disabled>‹</button>
+  <select id="alcado-select" onchange="goToSlide(parseInt(this.value))" style="flex:1;background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.75rem;padding:.3rem .5rem;border-radius:5px;outline:none;cursor:pointer;margin:0 .4rem">
+    <option>—</option>
+  </select>
+  <span class="alcado-idx" id="alcado-idx" style="flex-shrink:0">—</span>
+  <button class="nav-btn" id="btn-next" onclick="navAlcado(1)" style="margin-left:.4rem">›</button>
 </div>
 
 <!-- STAGE (alçados + hotspots) -->
@@ -468,8 +473,12 @@ function buildSlides() {
     wrap.appendChild(slide);
   });
 
+  // Aplicar classe initial
+  document.querySelectorAll('.slide').forEach((s,i)=>{
+    s.className='slide'+(i===0?' slide-active':'');
+  });
   updateNav();
-  goToSlide(0, false);
+  closePopup();
 }
 
 function renderPins(idx) {
@@ -497,18 +506,56 @@ function renderPins(idx) {
 
 // ─── NAVIGATION ────────────────────────────────
 function goToSlide(idx, animate=true) {
+  if (idx === S.idx && animate) return;
+  const dir    = idx > S.idx ? 'left' : 'right';
+  const oldIdx = S.idx;
   S.idx = idx;
-  const wrap = document.getElementById('slides-wrap');
-  if (animate) wrap.classList.add('sliding');
-  wrap.style.transform = `translateX(-${idx * 100}%)`;
-  if (animate) setTimeout(()=>wrap.classList.remove('sliding'), 380);
-  updateNav();
-  closePopup();
+
+  const slides = document.querySelectorAll('.slide');
+  if (!slides.length) { updateNav(); return; }
+
+  if (!animate) {
+    slides.forEach((s,i) => {
+      s.className = 'slide' + (i===idx?' slide-active':'');
+    });
+    updateNav(); closePopup(); return;
+  }
+
+  // Animar saída do slide actual
+  const oldSlide = slides[oldIdx];
+  const newSlide = slides[idx];
+  if (oldSlide) oldSlide.classList.add(dir==='left'?'slide-out-left':'slide-out-right');
+
+  // Preparar novo slide
+  if (newSlide) {
+    newSlide.style.display='flex';
+    newSlide.classList.add('slide-in');
+  }
+
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      if (newSlide) {
+        newSlide.classList.remove('slide-in');
+        newSlide.classList.add('slide-active');
+      }
+      setTimeout(()=>{
+        slides.forEach((s,i)=>{
+          s.className='slide'+(i===idx?' slide-active':'');
+        });
+        updateNav(); closePopup();
+      }, 370);
+    });
+  });
 }
 
 function updateNav() {
-  const n = S.alcados.length;
-  document.getElementById('alcado-name').textContent = S.alcados[S.idx]?.nome || '—';
+  const n   = S.alcados.length;
+  const sel = document.getElementById('alcado-select');
+  // Popular dropdown apenas uma vez
+  if (sel.options.length !== n || sel.options[0]?.value === '') {
+    sel.innerHTML = S.alcados.map((a,i)=>`<option value="${i}">${a.nome}</option>`).join('');
+  }
+  sel.value = String(S.idx);
   document.getElementById('alcado-idx').textContent  = n ? `${S.idx+1}/${n}` : '—';
   document.getElementById('btn-prev').disabled = S.idx === 0;
   document.getElementById('btn-next').disabled = S.idx >= n-1;

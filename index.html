@@ -284,6 +284,17 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .hs-pin.active.agua        { background: var(--accent); color: #fff; }
 .hs-pin.active.equipamento { background: var(--green);  color: #000; }
 .hs-pin.active.nota        { background: var(--purple); color: #fff; }
+.tipo-custom-opt {
+  padding: .35rem .55rem; border: 1px solid var(--border); border-radius: 4px;
+  font-size: .68rem; cursor: pointer; transition: all .15s;
+  font-family: var(--mono); color: var(--text2); display:flex; align-items:center; gap:.3rem;
+}
+.tipo-custom-opt.sel { border-color: currentColor; opacity:1; }
+.cor-swatch {
+  width:22px; height:22px; border-radius:4px; cursor:pointer; border:2px solid transparent;
+  transition: all .15s;
+}
+.cor-swatch.sel { border-color: #fff; transform:scale(1.15); }
 
 /* ══════════════════════════════════════════
    RIGHT PANEL (forms)
@@ -507,9 +518,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
         </div>
         <span class="coord-pill" id="coord-pill">—</span>
         <span class="canvas-hint" id="canvas-hint">Selecciona um alçado para começar</span>
-        <div style="margin-left:auto;display:flex;gap:.3rem">
+        <div style="margin-left:auto;display:flex;gap:.3rem;align-items:center">
           <button class="btn btn-secondary btn-sm btn-icon" onclick="rotateImg(-90)" title="Rodar esquerda">↺</button>
           <button class="btn btn-secondary btn-sm btn-icon" onclick="rotateImg(90)"  title="Rodar direita">↻</button>
+          <button class="btn btn-success btn-sm" id="btn-confirmar-rot" onclick="confirmarRotacao()" style="display:none" title="Confirmar rotação final">✓ Confirmar rotação</button>
         </div>
       </div>
 
@@ -544,6 +556,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
             <div class="tipo-opt" data-tipo="equipamento" onclick="selTipo('equipamento')">📦 Equip.</div>
             <div class="tipo-opt" data-tipo="nota" onclick="selTipo('nota')">📝 Nota</div>
           </div>
+        </div>
+        <div style="margin-top:-.25rem">
+          <div id="tipos-custom-grid" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.3rem"></div>
+          <button class="btn btn-ghost btn-sm" style="font-size:.65rem;padding:.2rem .5rem" onclick="showModal('modal-novo-tipo')">＋ Novo tipo</button>
         </div>
         <div class="field">
           <label>Label</label>
@@ -616,6 +632,29 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-share')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NOVO TIPO -->
+<div class="modal-bg" id="modal-novo-tipo">
+  <div class="modal">
+    <div class="modal-title">Novo <em>Tipo</em></div>
+    <div class="field">
+      <label>Nome do tipo</label>
+      <input type="text" id="novo-tipo-nome" placeholder="ex: Gás, Ventilação, Estrutura…">
+    </div>
+    <div class="field">
+      <label>Cor</label>
+      <div id="paleta-cores" style="display:grid;grid-template-columns:repeat(8,1fr);gap:.4rem;margin-top:.25rem"></div>
+    </div>
+    <div class="field">
+      <label>Ícone / Emoji</label>
+      <input type="text" id="novo-tipo-icone" placeholder="ex: 🔥 ou deixa vazio" maxlength="2">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-novo-tipo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarNovoTipo()">Criar tipo</button>
     </div>
   </div>
 </div>
@@ -696,6 +735,7 @@ const S = {
   alcados: [], activeKey: null,
   hotspots: {}, materiais: [],
   biblioteca: [],  // hotspots globais da obra
+  tiposCustom: [],  // tipos personalizados
   mode: 'ver',
   editHsId: null, pendingXY: null, selHsId: null,
   rotation: 0,
@@ -727,19 +767,21 @@ window.loadOrCreate = async () => {
       S.hotspots  = d.hotspots  || {};
       S.materiais = d.materiais || [];
       S.biblioteca= d.biblioteca|| [];
+      S.tiposCustom= d.tiposCustom || [];
       document.getElementById('obra-nome').value  = d.nome   || '';
       document.getElementById('obra-morada').value= d.morada || '';
       document.getElementById('obra-notas').value = d.notas  || '';
       S.obraNome = d.nome || id;
       toast('Obra carregada', 'ok');
     } else {
-      S.alcados = []; S.hotspots = {}; S.materiais = []; S.biblioteca = [];
+      S.alcados = []; S.hotspots = {}; S.materiais = []; S.biblioteca = []; S.tiposCustom = [];
       toast('Nova obra criada', 'ok');
     }
     document.getElementById('tb-obra').innerHTML = `<b>${S.obraNome}</b> <span style="color:var(--text3)">· ${id}</span>`;
     document.getElementById('links-section').style.display = 'block';
     updateShareLinks();
     renderAlcados(); renderMateriais(); renderBiblioList();
+    S.tiposCustom.forEach(tc=>injectPinCss(tc));
     showUploadZone();
   } catch(e) { toast('Erro: '+e.message,'err'); }
 };
@@ -756,7 +798,8 @@ window.saveObra = async () => {
       alcados:  S.alcados,
       hotspots:  S.hotspots,
       materiais: S.materiais,
-      biblioteca:S.biblioteca,
+      biblioteca: S.biblioteca,
+      tiposCustom:S.tiposCustom,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
     const ind = document.getElementById('saved-ind');
@@ -816,6 +859,9 @@ function activateAlcado(key) {
   if (a.img) { showImage(a.img); }
   else showUploadZone();
   renderMarkers();
+  // Botão confirmar rotação
+  const btn = document.getElementById('btn-confirmar-rot');
+  if (btn) btn.style.display = (a.img && !a.rotacaoConfirmada && a.rotation) ? 'flex' : 'none';
 }
 
 // ─── IMAGE UPLOAD (base64) ──────────────────────
@@ -828,7 +874,14 @@ function showImage(b64) {
   document.getElementById('image-stage').style.display='flex';
   const img = document.getElementById('alcado-img');
   img.src=b64;
-  img.onload = applyRotation;
+  img.onload = () => {
+    applyRotation();
+    // Se não há rotação, considerar já confirmado
+    const a = S.alcados.find(x=>x.key===S.activeKey);
+    if (a && !a.rotation) { a.rotacaoConfirmada = true; }
+    const btn = document.getElementById('btn-confirmar-rot');
+    if (btn) btn.style.display = (a && a.img && !a.rotacaoConfirmada && a.rotation) ? 'flex' : 'none';
+  };
 }
 
 window.triggerUpload = () => {
@@ -873,8 +926,21 @@ window.rotateImg = delta => {
   if (!a || !a.img) return toast('Sem imagem para rodar','err');
   S.rotation = ((S.rotation + delta) % 360 + 360) % 360;
   a.rotation = S.rotation;
+  a.rotacaoConfirmada = false;
   applyRotation();
-  toast('Imagem rodada','ok');
+  // Mostrar botão de confirmar rotação
+  const btn = document.getElementById('btn-confirmar-rot');
+  if (btn) btn.style.display = 'flex';
+  toast('Roda até ficares satisfeito e confirma ✓','ok');
+};
+
+window.confirmarRotacao = () => {
+  const a = S.alcados.find(x=>x.key===S.activeKey);
+  if (!a) return;
+  a.rotacaoConfirmada = true;
+  const btn = document.getElementById('btn-confirmar-rot');
+  if (btn) btn.style.display = 'none';
+  toast('Rotação confirmada — podes colocar hotspots','ok');
 };
 
 function applyRotation() {
@@ -900,6 +966,11 @@ function applyRotation() {
 document.getElementById('image-wrap').addEventListener('click', ev => {
   if (S.mode!=='colocar') return;
   if (!S.activeKey) return toast('Selecciona um alçado','err');
+  // Avisar se a imagem ainda não foi confirmada na rotação final
+  const a = S.alcados.find(x=>x.key===S.activeKey);
+  if (a && a.img && !a.rotacaoConfirmada && a.rotation && a.rotation !== 0) {
+    return toast('Confirma a rotação antes de colocar hotspots ↺↻ → ✓','err');
+  }
   const img  = document.getElementById('alcado-img');
   const rect = img.getBoundingClientRect();
   const x = +((ev.clientX-rect.left)/rect.width*100).toFixed(2);
@@ -928,15 +999,20 @@ function openRp(editMode) {
   const row = document.getElementById('biblio-check-row');
   if (row) row.style.display = editMode ? 'none' : 'flex';
   if (!editMode) { const cb=document.getElementById('hs-add-biblio'); if(cb) cb.checked=false; }
+  initPaleta();
+  renderTiposCustomGrid();
 }
 window.closeRp = () => { document.getElementById('right-panel').classList.remove('open'); S.pendingXY=null; S.editHsId=null; };
 
 let currentTipo='tomada';
 window.selTipo = t => {
   currentTipo=t;
+  // Tipos fixos
   document.querySelectorAll('.tipo-opt').forEach(el=>{
     el.className='tipo-opt'+(el.dataset.tipo===t?` sel-${t}`:'');
   });
+  // Tipos custom
+  renderTiposCustomGrid();
 };
 
 window.saveHs = () => {
@@ -1012,7 +1088,9 @@ function renderMarkers() {
     const m=document.createElement('div');
     m.className='hs-marker'; m.id='mk-'+h.id;
     m.style.left=h.x+'%'; m.style.top=h.y+'%';
-    m.innerHTML=`<div class="hs-pin draggable ${h.tipo}" title="${h.label}">${i+1}</div>`;
+    const tc = S.tiposCustom.find(t=>t.id===h.tipo);
+    if(tc) injectPinCss(tc);
+    m.innerHTML=`<div class="hs-pin draggable ${h.tipo}" title="${h.label}">${tc?(tc.icone||i+1):(i+1)}</div>`;
     const pin=m.querySelector('.hs-pin');
     // Click para editar (apenas sem drag)
     pin.addEventListener('click', ev=>{ ev.stopPropagation(); if(!S._didDrag) editHs(h.id); S._didDrag=false; });
@@ -1058,6 +1136,72 @@ function highlightPin(id) {
 }
 
 // ─── MATERIAIS ─────────────────────────────────
+// ─── TIPOS PERSONALIZADOS ──────────────────────
+const PALETA = ['#f05252','#e8a234','#2dd898','#4f7cff','#9d7dea','#38bdf8','#f472b6','#a3e635','#fb923c','#34d399','#60a5fa','#c084fc','#f9a8d4','#fde68a','#6ee7b7','#93c5fd'];
+let corSeleccionada = PALETA[0];
+
+function initPaleta() {
+  const el = document.getElementById('paleta-cores');
+  if (!el || el.children.length) return;
+  PALETA.forEach(cor => {
+    const sw = document.createElement('div');
+    sw.className = 'cor-swatch' + (cor===corSeleccionada?' sel':'');
+    sw.style.background = cor;
+    sw.onclick = () => {
+      corSeleccionada = cor;
+      el.querySelectorAll('.cor-swatch').forEach(s=>s.classList.toggle('sel', s.style.background===cor||s.style.backgroundColor===cor));
+    };
+    el.appendChild(sw);
+  });
+}
+
+window.confirmarNovoTipo = () => {
+  const nome  = document.getElementById('novo-tipo-nome').value.trim();
+  const icone = document.getElementById('novo-tipo-icone').value.trim();
+  if (!nome) return toast('Insere um nome para o tipo','err');
+  const id = 'tc_'+Date.now();
+  S.tiposCustom.push({ id, nome, cor: corSeleccionada, icone });
+  renderTiposCustomGrid();
+  closeModal('modal-novo-tipo');
+  document.getElementById('novo-tipo-nome').value='';
+  document.getElementById('novo-tipo-icone').value='';
+  toast('Tipo criado','ok');
+};
+
+// Injectar CSS dinâmico para pins de tipos custom
+function injectPinCss(tc) {
+  const sid = 'pin-css-'+tc.id;
+  if (document.getElementById(sid)) return;
+  const style = document.createElement('style');
+  style.id = sid;
+  style.textContent = `.hs-pin.${tc.id}{border-color:${tc.cor};color:${tc.cor}} .hs-pin.active.${tc.id}{background:${tc.cor};color:#000}`;
+  document.head.appendChild(style);
+}
+
+function renderTiposCustomGrid() {
+  const el = document.getElementById('tipos-custom-grid');
+  if (!el) return;
+  el.innerHTML='';
+  S.tiposCustom.forEach(tc => {
+    injectPinCss(tc);
+    const opt = document.createElement('div');
+    opt.className='tipo-custom-opt'+(currentTipo===tc.id?' sel':'');
+    opt.style.color = tc.cor;
+    opt.style.borderColor = currentTipo===tc.id ? tc.cor : '';
+    opt.style.background  = currentTipo===tc.id ? tc.cor+'22' : '';
+    opt.innerHTML = `${tc.icone||'●'} ${tc.nome} <span style="font-size:.6rem;color:var(--text3);cursor:pointer" onclick="deleteTipoCustom('${tc.id}',event)">✕</span>`;
+    opt.onclick = (e) => { if(e.target.tagName==='SPAN') return; selTipo(tc.id); };
+    el.appendChild(opt);
+  });
+}
+
+window.deleteTipoCustom = (id, e) => {
+  e.stopPropagation();
+  S.tiposCustom = S.tiposCustom.filter(t=>t.id!==id);
+  if (currentTipo===id) selTipo('tomada');
+  renderTiposCustomGrid();
+};
+
 // ─── BIBLIOTECA ────────────────────────────────
 function renderBiblioList() {
   const el = document.getElementById('biblio-list');
@@ -1091,6 +1235,9 @@ window.showModal = id => {
   if (id==='modal-biblio-pick') {
     if (!S.activeKey) return toast('Selecciona um alçado de destino primeiro','err');
     renderBiblioPickList();
+  }
+  if (id==='modal-novo-tipo') {
+    setTimeout(initPaleta, 50);
   }
   document.getElementById(id).classList.add('open');
 };
