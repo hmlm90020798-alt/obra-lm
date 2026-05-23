@@ -98,15 +98,19 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .slide.slide-prepare-left  { transform: translateX(6%)  scale(.96); opacity: 0; }
 .slide.slide-prepare-right { transform: translateX(-6%) scale(.96); opacity: 0; }
 .slide-inner {
-  position: relative; display: inline-block; line-height: 0;
-  transform-origin: center center;
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
 }
 .slide-inner img {
-  display: block; max-width: 100%; max-height: calc(100vh - 96px);
+  display: block;
+  max-width: 100%; max-height: 100%;
+  width: auto; height: auto;
   object-fit: contain;
   filter: invert(1) brightness(.88) contrast(1.05);
   border-radius: 2px;
   pointer-events: none;
+  /* Auto-fit — sem espaço vazio desnecessário */
+  flex-shrink: 1;
 }
 
 /* Transição entre slides */
@@ -119,11 +123,16 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 }
 .hs-pin-wrap svg {
   display: block; cursor: pointer;
-  transition: transform .15s, filter .15s;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), filter .2s;
   -webkit-tap-highlight-color: transparent;
+  /* Sombra para destacar do fundo da planta */
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.8)) drop-shadow(0 0 8px rgba(0,0,0,.6));
 }
-.hs-pin-wrap svg:active { transform: scale(.88); }
-.hs-pin-wrap.active svg { filter: drop-shadow(0 0 5px rgba(255,255,255,.3)); transform: scale(1.15); }
+.hs-pin-wrap svg:active { transform: scale(.85); }
+.hs-pin-wrap.active svg {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 2px 4px rgba(0,0,0,.8));
+}
 
 /* ── POPUP ── */
 .hs-popup {
@@ -161,6 +170,37 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   background: var(--raised); padding: .5rem .65rem;
   border-radius: 5px; border: 1px solid var(--border);
 }
+
+/* ── LEGENDA ── */
+.legenda {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 30;
+  display: flex; flex-wrap: wrap; gap: .4rem;
+  padding: .5rem .75rem;
+  background: linear-gradient(transparent, rgba(8,10,14,.85));
+  pointer-events: none;
+}
+.legenda-item {
+  display: flex; align-items: center; gap: .35rem;
+  font-family: var(--mono); font-size: .62rem; color: rgba(255,255,255,.7);
+  background: rgba(8,10,14,.6); padding: .2rem .45rem; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+/* ── ZOOM/PAN ── */
+.slide-inner.zoomed { cursor: grab; }
+.slide-inner.zoomed:active { cursor: grabbing; }
+.zoom-controls {
+  position: absolute; top: .5rem; right: .75rem; z-index: 40;
+  display: flex; gap: .3rem;
+}
+.zoom-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: rgba(17,19,24,.85); border: 1px solid var(--border);
+  color: var(--text2); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s; backdrop-filter: blur(4px);
+}
+.zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ── TABS BOTTOM ── */
 .bottom-tabs {
@@ -294,6 +334,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     A carregar obra…
   </div>
   <div class="slides-wrap" id="slides-wrap" style="display:none"></div>
+  <div class="zoom-controls">
+    <button class="zoom-btn" onclick="zoomIn()" title="Zoom +">＋</button>
+    <button class="zoom-btn" onclick="zoomReset()" title="Reset">⊙</button>
+    <button class="zoom-btn" onclick="zoomOut()" title="Zoom −">－</button>
+  </div>
+  <div class="legenda" id="legenda"></div>
 </div>
 
 <!-- PANEL: MATERIAIS -->
@@ -528,9 +574,10 @@ function buildSlides() {
 
 function calcPinSize(idx) {
   const img = document.querySelector(`#inner-${idx} img`);
-  if (!img) return 28;
+  if (!img) return 36;
   const w = img.getBoundingClientRect().width;
-  return Math.min(40, Math.max(18, Math.round(w * 0.038)));
+  // Técnico: pins maiores para toque fácil em obra (mín 32px, máx 52px)
+  return Math.min(52, Math.max(32, Math.round(w * 0.05)));
 }
 
 function renderPins(idx) {
@@ -567,6 +614,24 @@ function renderPins(idx) {
     });
     inner.appendChild(wrap);
   });
+
+  // Actualizar legenda com tipos presentes neste alçado
+  renderLegenda(hss);
+}
+
+function renderLegenda(hss) {
+  const el = document.getElementById('legenda');
+  if (!el) return;
+  // Tipos únicos presentes
+  const tiposPresentes = [...new Set(hss.map(h=>h.tipo))];
+  if (!tiposPresentes.length) { el.innerHTML=''; return; }
+  el.innerHTML = tiposPresentes.map(tid => {
+    const t = getTipoById(tid);
+    return `<div class="legenda-item">
+      ${pinSVG(tid, '', 16)}
+      <span>${t.label}</span>
+    </div>`;
+  }).join('');
 }
 
 // ─── NAVIGATION ────────────────────────────────
@@ -625,7 +690,7 @@ window.navAlcado = dir => {
   goToSlide(next);
 };
 
-// Re-render pins ao redimensionar (orientação mobile)
+// Re-render pins ao redimensionar
 let _resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(_resizeTimer);
@@ -634,24 +699,91 @@ window.addEventListener('resize', () => {
       const img = document.querySelector(`#inner-${i} img`);
       if (img && img.complete) renderPins(i);
     });
+    applyZoom();
   }, 200);
 });
 
-// ─── SWIPE ─────────────────────────────────────
 let swipeStart = null;
+
+// ─── ZOOM / PAN ─────────────────────────────────
 const stage = document.getElementById('stage');
+const Z = { scale: 1, x: 0, y: 0, minScale: 1, maxScale: 5 };
+
+function applyZoom() {
+  const inner = document.querySelector('.slide-active .slide-inner');
+  if (!inner) return;
+  inner.style.transform = `scale(${Z.scale}) translate(${Z.x}px, ${Z.y}px)`;
+  inner.style.transformOrigin = 'center center';
+  inner.classList.toggle('zoomed', Z.scale > 1);
+}
+
+window.zoomIn    = () => { Z.scale = Math.min(Z.maxScale, +(Z.scale * 1.4).toFixed(2)); applyZoom(); };
+window.zoomOut   = () => { Z.scale = Math.max(Z.minScale, +(Z.scale / 1.4).toFixed(2)); if(Z.scale<=1){Z.x=0;Z.y=0;} applyZoom(); };
+window.zoomReset = () => { Z.scale=1; Z.x=0; Z.y=0; applyZoom(); };
+
+// Pinch-to-zoom (touch)
+let _touch = { dist:0, startX:0, startY:0, lastX:0, lastY:0, isPinch:false };
+
 stage.addEventListener('touchstart', e => {
-  swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-}, { passive: true });
+  if (e.touches.length === 2) {
+    _touch.isPinch = true;
+    _touch.dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    e.preventDefault();
+  } else if (e.touches.length === 1 && Z.scale > 1) {
+    _touch.startX = e.touches[0].clientX - Z.x;
+    _touch.startY = e.touches[0].clientY - Z.y;
+    _touch.isPinch = false;
+  } else {
+    _touch.isPinch = false;
+    swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+}, { passive: false });
+
+stage.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && _touch.isPinch) {
+    e.preventDefault();
+    const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    Z.scale = Math.min(Z.maxScale, Math.max(Z.minScale, Z.scale * (d / _touch.dist)));
+    _touch.dist = d;
+    applyZoom();
+  } else if (e.touches.length === 1 && Z.scale > 1 && !_touch.isPinch) {
+    e.preventDefault();
+    Z.x = e.touches[0].clientX - _touch.startX;
+    Z.y = e.touches[0].clientY - _touch.startY;
+    applyZoom();
+  }
+}, { passive: false });
+
 stage.addEventListener('touchend', e => {
+  if (_touch.isPinch && e.touches.length < 2) { _touch.isPinch = false; return; }
+  if (Z.scale > 1) return; // Não swipe quando com zoom
   if (!swipeStart) return;
   const dx = e.changedTouches[0].clientX - swipeStart.x;
   const dy = e.changedTouches[0].clientY - swipeStart.y;
-  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+    zoomReset();
     if (dx < 0) navAlcado(1); else navAlcado(-1);
   }
   swipeStart = null;
 }, { passive: true });
+
+// Mouse wheel zoom (desktop)
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 1.15 : 0.87;
+  Z.scale = Math.min(Z.maxScale, Math.max(Z.minScale, Z.scale * delta));
+  if (Z.scale <= 1) { Z.x=0; Z.y=0; }
+  applyZoom();
+}, { passive: false });
+
+// Reset zoom ao mudar de slide
+const _origGoToSlide = window.goToSlide;
+window.goToSlide = function(idx, animate=true) {
+  zoomReset();
+  _origGoToSlide(idx, animate);
+};
+
+
 
 // ─── POPUP ─────────────────────────────────────
 function togglePopup(h, pinWrap, slideIdx) {
