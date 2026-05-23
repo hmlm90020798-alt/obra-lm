@@ -546,8 +546,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
           <input type="text" id="hs-label" placeholder="ex: Tomada Placa Indução">
         </div>
         <div class="field">
+          <label>Cota / Medida</label>
+          <input type="text" id="hs-cota" placeholder="ex: 266cm da parede esq.">
+        </div>
+        <div class="field">
           <label>Informação técnica</label>
-          <textarea id="hs-tec" rows="3" placeholder="Medidas, amperagem, instalação…"></textarea>
+          <textarea id="hs-tec" rows="3" placeholder="Amperagem, instalação, notas…"></textarea>
         </div>
         <div class="field">
           <label>Informação cliente</label>
@@ -1094,6 +1098,7 @@ document.getElementById('image-wrap').addEventListener('click', ev => {
   const y = +((ev.clientY-rect.top)/rect.height*100).toFixed(2);
   S.pendingXY = {x,y}; S.editHsId = null;
   document.getElementById('hs-label').value='';
+  document.getElementById('hs-cota').value='';
   document.getElementById('hs-tec').value='';
   document.getElementById('hs-cli').value='';
   document.getElementById('rp-coords').textContent=`x: ${x}%  ·  y: ${y}%`;
@@ -1130,6 +1135,7 @@ window.selTipo = t => {
 
 window.saveHs = () => {
   const label  = document.getElementById('hs-label').value.trim();
+  const cota   = document.getElementById('hs-cota').value.trim();
   const tec    = document.getElementById('hs-tec').value.trim();
   const cli    = document.getElementById('hs-cli').value.trim();
   const addBib = document.getElementById('hs-add-biblio')?.checked;
@@ -1138,7 +1144,7 @@ window.saveHs = () => {
   if (!S.hotspots[key]) S.hotspots[key]=[];
   if (S.editHsId) {
     const h=S.hotspots[key].find(h=>h.id===S.editHsId);
-    if(h) Object.assign(h,{label,tec,cli,tipo:currentTipo});
+    if(h) Object.assign(h,{label,cota,tec,cli,tipo:currentTipo});
     // Actualizar na biblioteca se existir
     const bh=S.biblioteca.find(b=>b.id===h?.bibId);
     if(bh) Object.assign(bh,{label,tec,cli,tipo:currentTipo});
@@ -1151,7 +1157,7 @@ window.saveHs = () => {
       S.biblioteca.push({id:bibId, tipo:currentTipo, label, tec, cli});
       renderBiblioList();
     }
-    S.hotspots[key].push({id, x:S.pendingXY.x, y:S.pendingXY.y, tipo:currentTipo, label, tec, cli, bibId});
+    S.hotspots[key].push({id, x:S.pendingXY.x, y:S.pendingXY.y, tipo:currentTipo, label, cota, tec, cli, bibId});
   }
   closeRp(); renderHsList(); renderMarkers(); renderAlcados();
   toast(addBib?'Guardado + adicionado à biblioteca':'Hotspot guardado','ok');
@@ -1177,6 +1183,7 @@ window.editHs = id => {
   if(!h) return;
   S.editHsId=id; S.selHsId=id;
   document.getElementById('hs-label').value=h.label;
+  document.getElementById('hs-cota').value=h.cota||'';
   document.getElementById('hs-tec').value=h.tec||'';
   document.getElementById('hs-cli').value=h.cli||'';
   document.getElementById('rp-coords').textContent=`x: ${h.x}%  ·  y: ${h.y}%`;

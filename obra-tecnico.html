@@ -164,6 +164,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   font-size: .6rem; font-family: var(--mono); text-transform: uppercase;
   letter-spacing: .1em; color: var(--text3); margin-bottom: .5rem;
 }
+.popup-cota {
+  font-size: .78rem; font-family: var(--mono); font-weight: 600;
+  color: var(--green); margin-bottom: .4rem;
+  padding: .3rem .5rem; background: rgba(45,216,152,.08);
+  border: 1px solid rgba(45,216,152,.2); border-radius: 4px;
+}
 .popup-tec {
   font-size: .75rem; color: var(--text2); line-height: 1.55;
   font-family: var(--mono); white-space: pre-wrap;
@@ -809,6 +815,7 @@ function togglePopup(h, pinWrap, slideIdx) {
       <button class="popup-close" onclick="closePopup()">✕</button>
     </div>
     <div class="popup-tipo" style="color:${tipoObj.cor}">${tipoObj.label}</div>
+    ${h.cota ? `<div class="popup-cota">📏 ${h.cota}</div>` : ''}
     ${h.tec ? `<div class="popup-tec">${h.tec}</div>` : '<div style="font-size:.72rem;color:var(--text3)">Sem informação técnica.</div>'}
   `;
 
