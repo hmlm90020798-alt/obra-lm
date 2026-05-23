@@ -76,20 +76,22 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 
 /* Slides container */
 .slides-wrap {
-  display: flex; height: 100%;
-  will-change: transform;
-  position: relative;
+  position: relative; height: 100%; width: 100%;
 }
 .slide {
-  flex-shrink: 0; width: 100%; height: 100%;
+  position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  position: relative; overflow: hidden;
-  transition: opacity .35s ease, transform .35s cubic-bezier(.4,0,.2,1);
+  overflow: hidden;
+  opacity: 0; pointer-events: none;
+  transition: opacity .4s ease, transform .4s cubic-bezier(.4,0,.2,1);
+  transform: scale(.97);
 }
-.slide.slide-out-left  { opacity: 0; transform: translateX(-6%) scale(.97); }
-.slide.slide-out-right { opacity: 0; transform: translateX(6%)  scale(.97); }
-.slide.slide-in        { opacity: 0; transform: scale(.97); }
-.slide.slide-active    { opacity: 1; transform: translateX(0) scale(1); }
+.slide.slide-active {
+  opacity: 1; pointer-events: auto;
+  transform: scale(1);
+}
+.slide.slide-enter-left  { transform: translateX(5%)  scale(.97); }
+.slide.slide-enter-right { transform: translateX(-5%) scale(.97); }
 .slide-inner {
   position: relative; display: inline-block; line-height: 0;
   transform-origin: center center;
@@ -473,12 +475,12 @@ function buildSlides() {
     wrap.appendChild(slide);
   });
 
-  // Aplicar classe initial
+  // Activar primeiro slide
   document.querySelectorAll('.slide').forEach((s,i)=>{
     s.className='slide'+(i===0?' slide-active':'');
   });
+  S.idx = 0;
   updateNav();
-  closePopup();
 }
 
 function renderPins(idx) {
@@ -506,44 +508,52 @@ function renderPins(idx) {
 
 // ─── NAVIGATION ────────────────────────────────
 window.goToSlide = function goToSlide(idx, animate=true) {
-  if (idx === S.idx && animate) return;
+  if (idx < 0 || idx >= S.alcados.length) return;
+  const slides = document.querySelectorAll('.slide');
+  if (!slides.length) return;
+
   const dir    = idx > S.idx ? 'left' : 'right';
   const oldIdx = S.idx;
-  S.idx = idx;
+  S.idx = Number(idx);
 
-  const slides = document.querySelectorAll('.slide');
-  if (!slides.length) { updateNav(); return; }
-
-  if (!animate) {
-    slides.forEach((s,i) => {
-      s.className = 'slide' + (i===idx?' slide-active':'');
-    });
+  if (!animate || oldIdx === S.idx) {
+    slides.forEach((s,i) => s.className = 'slide' + (i===S.idx?' slide-active':''));
     updateNav(); closePopup(); return;
   }
 
-  // Animar saída do slide actual
   const oldSlide = slides[oldIdx];
-  const newSlide = slides[idx];
-  if (oldSlide) oldSlide.classList.add(dir==='left'?'slide-out-left':'slide-out-right');
+  const newSlide = slides[S.idx];
 
-  // Preparar novo slide
+  // Preparar novo slide fora do ecrã
   if (newSlide) {
-    newSlide.style.display='flex';
-    newSlide.classList.add('slide-in');
+    newSlide.classList.add(dir==='left' ? 'slide-enter-left' : 'slide-enter-right');
+    newSlide.style.opacity = '0';
   }
 
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{
+  // Fade out do slide actual
+  if (oldSlide) {
+    oldSlide.style.transition = 'opacity .25s ease, transform .25s ease';
+    oldSlide.style.opacity    = '0';
+    oldSlide.style.transform  = dir==='left' ? 'translateX(-5%) scale(.97)' : 'translateX(5%) scale(.97)';
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      // Activar novo slide
       if (newSlide) {
-        newSlide.classList.remove('slide-in');
+        newSlide.classList.remove('slide-enter-left','slide-enter-right');
         newSlide.classList.add('slide-active');
       }
-      setTimeout(()=>{
-        slides.forEach((s,i)=>{
-          s.className='slide'+(i===idx?' slide-active':'');
+      setTimeout(() => {
+        // Limpar tudo
+        slides.forEach((s,i) => {
+          s.className = 'slide' + (i===S.idx?' slide-active':'');
+          s.style.opacity   = '';
+          s.style.transform = '';
+          s.style.transition= '';
         });
         updateNav(); closePopup();
-      }, 370);
+      }, 420);
     });
   });
 }
