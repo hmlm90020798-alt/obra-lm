@@ -505,7 +505,7 @@ function renderPins(idx) {
 }
 
 // ─── NAVIGATION ────────────────────────────────
-function goToSlide(idx, animate=true) {
+window.goToSlide = function goToSlide(idx, animate=true) {
   if (idx === S.idx && animate) return;
   const dir    = idx > S.idx ? 'left' : 'right';
   const oldIdx = S.idx;
