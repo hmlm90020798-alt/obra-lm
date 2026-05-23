@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0c0e12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Ficha de Obra · Técnico</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0c0e12;
+  --surface: #111318;
+  --raised:  #161920;
+  --border:  #1d2130;
+  --accent:  #4f7cff;
+  --amber:   #e8a234;
+  --green:   #2dd898;
+  --purple:  #9d7dea;
+  --red:     #f05252;
+  --text:    #d8dce8;
+  --text2:   #7a8099;
+  --text3:   #3d4259;
+  --mono:    'DM Mono', monospace;
+  --sans:    'Instrument Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+
+/* ── HEADER ── */
+.header {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .6rem 1rem; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 52px;
+}
+.header-back { background: none; border: none; color: var(--text2); font-size: 1.1rem; cursor: pointer; padding: .2rem .4rem; }
+.header-info { flex: 1; min-width: 0; }
+.header-title { font-size: .9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-sub { font-size: .65rem; color: var(--text2); font-family: var(--mono); margin-top: .1rem; }
+.header-badge {
+  font-size: .6rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em;
+  padding: .2rem .55rem; border-radius: 20px;
+  background: rgba(79,124,255,.12); color: var(--accent); border: 1px solid rgba(79,124,255,.25);
+  flex-shrink: 0;
+}
+
+/* ── ALCADO COUNTER ── */
+.alcado-counter {
+  position: fixed; top: 52px; left: 0; right: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .5rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border);
+  height: 44px;
+}
+.alcado-name { font-size: .82rem; font-weight: 600; }
+.alcado-nav { display: flex; align-items: center; gap: .5rem; }
+.nav-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: var(--raised); border: 1px solid var(--border);
+  color: var(--text2); font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: .3; cursor: default; }
+.alcado-idx { font-family: var(--mono); font-size: .7rem; color: var(--text3); }
+
+/* ── STAGE ── */
+.stage {
+  position: fixed; top: 96px; left: 0; right: 0; bottom: 0;
+  overflow: hidden; background: #080a0e;
+  touch-action: none;
+}
+
+/* Slides container */
+.slides-wrap {
+  display: flex; height: 100%;
+  transition: transform .35s cubic-bezier(.4,0,.2,1);
+  will-change: transform;
+}
+.slide {
+  flex-shrink: 0; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.slide-inner {
+  position: relative; display: inline-block; line-height: 0;
+  transform-origin: center center;
+}
+.slide-inner img {
+  display: block; max-width: 100%; max-height: calc(100vh - 96px);
+  object-fit: contain;
+  filter: invert(1) brightness(.88) contrast(1.05);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Transição entre slides */
+.slides-wrap.sliding .slide { pointer-events: none; }
+
+/* ── HOTSPOT PINS ── */
+.hs-pin-wrap {
+  position: absolute; transform: translate(-50%,-50%); z-index: 20;
+}
+.hs-pin {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid; background: rgba(8,10,14,.88);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .65rem; font-family: var(--mono); font-weight: 500;
+  cursor: pointer; transition: transform .15s, box-shadow .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.hs-pin:active { transform: scale(.88); }
+.hs-pin.active { box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
+.hs-pin.tomada  { border-color: var(--amber);  color: var(--amber);  }
+.hs-pin.agua    { border-color: var(--accent); color: var(--accent); }
+.hs-pin.equipamento { border-color: var(--green); color: var(--green); }
+.hs-pin.nota    { border-color: var(--purple); color: var(--purple); }
+
+/* ── POPUP ── */
+.hs-popup {
+  position: absolute; z-index: 50;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: .85rem 1rem; width: 220px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  pointer-events: auto;
+  animation: popIn .15s cubic-bezier(.16,1,.3,1);
+}
+@keyframes popIn {
+  from { opacity:0; transform: scale(.9) translateY(4px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+.popup-header { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .6rem; }
+.popup-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: .3rem; }
+.popup-dot.tomada  { background: var(--amber); }
+.popup-dot.agua    { background: var(--accent); }
+.popup-dot.equipamento { background: var(--green); }
+.popup-dot.nota    { background: var(--purple); }
+.popup-label { font-size: .82rem; font-weight: 600; line-height: 1.3; flex: 1; }
+.popup-close {
+  background: none; border: none; color: var(--text3); cursor: pointer;
+  font-size: .9rem; padding: .1rem; margin-left: auto; flex-shrink: 0;
+  transition: color .15s;
+}
+.popup-close:hover { color: var(--text); }
+.popup-tipo {
+  font-size: .6rem; font-family: var(--mono); text-transform: uppercase;
+  letter-spacing: .1em; color: var(--text3); margin-bottom: .5rem;
+}
+.popup-tec {
+  font-size: .75rem; color: var(--text2); line-height: 1.55;
+  font-family: var(--mono); white-space: pre-wrap;
+  background: var(--raised); padding: .5rem .65rem;
+  border-radius: 5px; border: 1px solid var(--border);
+}
+
+/* ── TABS BOTTOM ── */
+.bottom-tabs {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  display: flex; background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.btab {
+  flex: 1; padding: .6rem .4rem .5rem; border: none; background: transparent;
+  color: var(--text3); font-family: var(--sans); font-size: .62rem;
+  font-weight: 500; cursor: pointer; transition: color .15s;
+  display: flex; flex-direction: column; align-items: center; gap: .2rem;
+}
+.btab.active { color: var(--accent); }
+.btab-icon { font-size: 1.1rem; line-height: 1; }
+
+/* ── PANEL PAGES ── */
+.panel-page {
+  position: fixed; top: 96px; left: 0; right: 0;
+  bottom: calc(49px + env(safe-area-inset-bottom));
+  background: var(--bg); overflow-y: auto;
+  display: none; padding: .75rem;
+  flex-direction: column; gap: .5rem;
+}
+.panel-page.active { display: flex; }
+
+/* MATERIAIS */
+.mat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: .65rem .9rem;
+  display: flex; align-items: center; gap: .75rem;
+}
+.mat-check {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--raised);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all .15s;
+  font-size: .7rem;
+}
+.mat-check.done { background: var(--green); border-color: var(--green); color: #000; }
+.mat-ref { font-family: var(--mono); font-size: .65rem; color: var(--text3); flex-shrink: 0; min-width: 55px; }
+.mat-nome { font-size: .8rem; flex: 1; }
+.mat-qty { font-family: var(--mono); font-size: .75rem; color: var(--accent); flex-shrink: 0; }
+
+/* OCORRÊNCIAS */
+.ocor-form {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: .75rem;
+}
+.ocor-form textarea {
+  width: 100%; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--mono); font-size: .8rem;
+  resize: none; min-height: 70px; line-height: 1.5;
+}
+.ocor-form-footer {
+  display: flex; justify-content: flex-end; gap: .5rem;
+  padding-top: .5rem; border-top: 1px solid var(--border); margin-top: .5rem;
+}
+.ocor-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: .65rem .9rem;
+}
+.ocor-meta { font-size: .65rem; font-family: var(--mono); color: var(--text3); margin-bottom: .3rem; }
+.ocor-text { font-size: .8rem; line-height: 1.5; }
+
+/* CONCLUSÃO */
+.conclusao-wrap {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; padding: 2rem 1rem; text-align: center; gap: 1rem;
+}
+.conclusao-icon { font-size: 3rem; }
+.conclusao-title { font-size: 1.1rem; font-weight: 600; }
+.conclusao-sub { font-size: .8rem; color: var(--text2); line-height: 1.6; max-width: 260px; }
+.btn-conclusao {
+  padding: .75rem 2rem; border-radius: 8px; border: none;
+  background: var(--green); color: #000; font-family: var(--sans);
+  font-size: .9rem; font-weight: 700; cursor: pointer; transition: opacity .15s;
+}
+.btn-conclusao:hover { opacity: .85; }
+.btn-conclusao:disabled { background: var(--border); color: var(--text3); cursor: default; }
+.conclusao-done { color: var(--green); }
+.conclusao-ts { font-family: var(--mono); font-size: .75rem; color: var(--text2); }
+
+/* UTILS */
+.btn { padding: .4rem .85rem; border-radius: 5px; border: none; font-family: var(--sans); font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1rem; color: var(--text3); font-size: .8rem; text-align: center; gap: .5rem; }
+.empty-icon { font-size: 1.75rem; opacity: .35; }
+.section-label { font-family: var(--mono); font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); padding: .25rem 0; }
+
+/* LOADING */
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1rem; color: var(--text3); font-size: .82rem; }
+.spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* TOAST */
+#toast { position: fixed; bottom: 4rem; left: 50%; transform: translateX(-50%) translateY(.5rem); background: var(--raised); border: 1px solid var(--border); color: var(--text); padding: .45rem 1rem; border-radius: 6px; font-size: .72rem; font-family: var(--mono); opacity: 0; pointer-events: none; transition: all .2s; z-index: 999; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.ok  { border-color: var(--green); color: var(--green); }
+#toast.err { border-color: var(--red);   color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <button class="header-back" onclick="history.back()">←</button>
+  <div class="header-info">
+    <div class="header-title" id="h-title">A carregar…</div>
+    <div class="header-sub" id="h-sub">Ficha de Obra · Técnico</div>
+  </div>
+  <div class="header-badge" id="h-badge">Em obra</div>
+</div>
+
+<!-- ALCADO NAV BAR -->
+<div class="alcado-counter">
+  <span class="alcado-name" id="alcado-name">—</span>
+  <div class="alcado-nav">
+    <button class="nav-btn" id="btn-prev" onclick="navAlcado(-1)" disabled>‹</button>
+    <span class="alcado-idx" id="alcado-idx">—</span>
+    <button class="nav-btn" id="btn-next" onclick="navAlcado(1)">›</button>
+  </div>
+</div>
+
+<!-- STAGE (alçados + hotspots) -->
+<div class="stage" id="stage">
+  <div class="loading" id="stage-loading">
+    <div class="spinner"></div>
+    A carregar obra…
+  </div>
+  <div class="slides-wrap" id="slides-wrap" style="display:none"></div>
+</div>
+
+<!-- PANEL: MATERIAIS -->
+<div class="panel-page" id="panel-materiais">
+  <div class="section-label">Lista de materiais</div>
+  <div id="mat-list"></div>
+</div>
+
+<!-- PANEL: OCORRÊNCIAS -->
+<div class="panel-page" id="panel-ocorrencias">
+  <div class="ocor-form">
+    <textarea id="ocor-input" placeholder="Descreve a ocorrência, problema ou nota de obra…" rows="3"></textarea>
+    <div class="ocor-form-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('ocor-input').value=''">Limpar</button>
+      <button class="btn btn-primary" onclick="addOcorrencia()">Registar</button>
+    </div>
+  </div>
+  <div class="section-label">Histórico</div>
+  <div id="ocor-list"></div>
+</div>
+
+<!-- PANEL: CONCLUSÃO -->
+<div class="panel-page" id="panel-conclusao">
+  <div class="conclusao-wrap" id="conclusao-wrap">
+    <div class="conclusao-icon">🔧</div>
+    <div class="conclusao-title">Confirmar conclusão</div>
+    <div class="conclusao-sub">Ao confirmar, registas que a instalação foi concluída. Fica guardado com data e hora.</div>
+    <button class="btn-conclusao" id="btn-concluir" onclick="confirmarConclusao()">Marcar como concluído</button>
+  </div>
+</div>
+
+<!-- BOTTOM TABS -->
+<div class="bottom-tabs">
+  <button class="btab active" id="btab-alcados" onclick="switchTab('alcados')">
+    <span class="btab-icon">📐</span>Alçados
+  </button>
+  <button class="btab" id="btab-materiais" onclick="switchTab('materiais')">
+    <span class="btab-icon">📦</span>Materiais
+  </button>
+  <button class="btab" id="btab-ocorrencias" onclick="switchTab('ocorrencias')">
+    <span class="btab-icon">📝</span>Ocorrências
+  </button>
+  <button class="btab" id="btab-conclusao" onclick="switchTab('conclusao')">
+    <span class="btab-icon">✅</span>Conclusão
+  </button>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, updateDoc }
+                          from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const FB = {
+  apiKey:            'AIzaSyALyrpFSGx4evXtOYCfRIvWc_jTjByz0R8',
+  authDomain:        'hm-projetos-lm.firebaseapp.com',
+  projectId:         'hm-projetos-lm',
+  storageBucket:     'hm-projetos-lm.firebasestorage.app',
+  messagingSenderId: '772658359928',
+  appId:             '1:772658359928:web:98332ec006329f380ec78d',
+};
+const app = initializeApp(FB);
+const db  = getFirestore(app);
+
+// ─── STATE ─────────────────────────────────────
+const S = {
+  obraId: '', obra: null,
+  alcados: [], idx: 0,
+  hotspots: {}, tiposCustom: [],
+  materiais: [], matCheck: {},
+  ocorrencias: [], conclusao: null,
+  activePopup: null,
+};
+
+// ─── INIT ──────────────────────────────────────
+const params  = new URLSearchParams(location.search);
+const obraId  = params.get('obra');
+if (!obraId) {
+  document.getElementById('h-title').textContent = 'URL inválido';
+  document.getElementById('stage-loading').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Parâmetro ?obra= em falta</div>';
+} else {
+  S.obraId = obraId;
+  loadObra();
+}
+
+async function loadObra() {
+  try {
+    const snap = await getDoc(doc(db, 'obras', S.obraId));
+    if (!snap.exists()) {
+      document.getElementById('h-title').textContent = 'Obra não encontrada';
+      document.getElementById('stage-loading').innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>Obra não encontrada</div>';
+      return;
+    }
+    const d = snap.data();
+    S.obra        = d;
+    S.alcados     = d.alcados    || [];
+    S.hotspots    = d.hotspots   || {};
+    S.tiposCustom = d.tiposCustom|| [];
+    S.materiais   = d.materiais  || [];
+    S.matCheck    = d.matCheck   || {};
+    S.ocorrencias = d.ocorrencias_tecnico || [];
+    S.conclusao   = d.conclusao  || null;
+
+    document.getElementById('h-title').textContent = d.nome || S.obraId;
+    document.getElementById('h-sub').textContent   = d.morada || 'Ficha de Obra · Técnico';
+
+    if (S.conclusao) {
+      const b = document.getElementById('h-badge');
+      b.textContent = 'Concluído';
+      b.style.background = 'rgba(45,216,152,.12)';
+      b.style.color      = 'var(--green)';
+      b.style.borderColor= 'rgba(45,216,152,.25)';
+    }
+
+    // Injectar CSS tipos custom
+    S.tiposCustom.forEach(tc => injectTipoCss(tc));
+
+    buildSlides();
+    renderMateriais();
+    renderOcorrencias();
+    setupConclusao();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('stage-loading').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>Erro: ${e.message}</div>`;
+  }
+}
+
+// ─── TIPOS CUSTOM CSS ──────────────────────────
+function injectTipoCss(tc) {
+  const sid = 'tc-'+tc.id;
+  if (document.getElementById(sid)) return;
+  const s = document.createElement('style');
+  s.id = sid;
+  s.textContent = `.hs-pin.${tc.id}{border-color:${tc.cor};color:${tc.cor}} .popup-dot.${tc.id}{background:${tc.cor}}`;
+  document.head.appendChild(s);
+}
+
+function getTipoCor(tipo) {
+  const map = { tomada: 'var(--amber)', agua: 'var(--accent)', equipamento: 'var(--green)', nota: 'var(--purple)' };
+  if (map[tipo]) return map[tipo];
+  const tc = S.tiposCustom.find(t=>t.id===tipo);
+  return tc ? tc.cor : '#fff';
+}
+
+// ─── SLIDES ────────────────────────────────────
+function buildSlides() {
+  const wrap = document.getElementById('slides-wrap');
+  document.getElementById('stage-loading').style.display = 'none';
+  wrap.style.display = 'flex';
+
+  if (!S.alcados.length) {
+    wrap.innerHTML = '<div class="slide"><div class="empty"><div class="empty-icon">📐</div>Sem alçados configurados</div></div>';
+    return;
+  }
+
+  wrap.innerHTML = '';
+  S.alcados.forEach((a, i) => {
+    const slide = document.createElement('div');
+    slide.className = 'slide';
+    slide.id = 'slide-'+i;
+
+    const inner = document.createElement('div');
+    inner.className = 'slide-inner';
+    inner.id = 'inner-'+i;
+
+    if (a.img) {
+      const img = document.createElement('img');
+      img.src = a.img;
+      img.style.transform = a.rotation ? `rotate(${a.rotation}deg)` : '';
+      img.onload = () => renderPins(i);
+      inner.appendChild(img);
+    } else {
+      inner.innerHTML = '<div class="empty"><div class="empty-icon">🖼</div>Sem imagem</div>';
+    }
+
+    slide.appendChild(inner);
+    wrap.appendChild(slide);
+  });
+
+  updateNav();
+  goToSlide(0, false);
+}
+
+function renderPins(idx) {
+  const inner = document.getElementById('inner-'+idx);
+  if (!inner) return;
+  inner.querySelectorAll('.hs-pin-wrap').forEach(el=>el.remove());
+
+  const key = S.alcados[idx]?.key;
+  const hss = key ? (S.hotspots[key]||[]) : [];
+  hss.forEach((h, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'hs-pin-wrap';
+    wrap.style.left = h.x+'%';
+    wrap.style.top  = h.y+'%';
+    const tc = S.tiposCustom.find(t=>t.id===h.tipo);
+    const label = tc ? (tc.icone||i+1) : (i+1);
+    wrap.innerHTML = `<div class="hs-pin ${h.tipo}" data-idx="${idx}" data-id="${h.id}">${label}</div>`;
+    wrap.querySelector('.hs-pin').addEventListener('click', ev => {
+      ev.stopPropagation();
+      togglePopup(h, wrap, idx);
+    });
+    inner.appendChild(wrap);
+  });
+}
+
+// ─── NAVIGATION ────────────────────────────────
+function goToSlide(idx, animate=true) {
+  S.idx = idx;
+  const wrap = document.getElementById('slides-wrap');
+  if (animate) wrap.classList.add('sliding');
+  wrap.style.transform = `translateX(-${idx * 100}%)`;
+  if (animate) setTimeout(()=>wrap.classList.remove('sliding'), 380);
+  updateNav();
+  closePopup();
+}
+
+function updateNav() {
+  const n = S.alcados.length;
+  document.getElementById('alcado-name').textContent = S.alcados[S.idx]?.nome || '—';
+  document.getElementById('alcado-idx').textContent  = n ? `${S.idx+1}/${n}` : '—';
+  document.getElementById('btn-prev').disabled = S.idx === 0;
+  document.getElementById('btn-next').disabled = S.idx >= n-1;
+}
+
+window.navAlcado = dir => {
+  const next = S.idx + dir;
+  if (next < 0 || next >= S.alcados.length) return;
+  goToSlide(next);
+};
+
+// ─── SWIPE ─────────────────────────────────────
+let swipeStart = null;
+const stage = document.getElementById('stage');
+stage.addEventListener('touchstart', e => {
+  swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, { passive: true });
+stage.addEventListener('touchend', e => {
+  if (!swipeStart) return;
+  const dx = e.changedTouches[0].clientX - swipeStart.x;
+  const dy = e.changedTouches[0].clientY - swipeStart.y;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    if (dx < 0) navAlcado(1); else navAlcado(-1);
+  }
+  swipeStart = null;
+}, { passive: true });
+
+// ─── POPUP ─────────────────────────────────────
+function togglePopup(h, pinWrap, slideIdx) {
+  if (S.activePopup && S.activePopup.id === h.id) { closePopup(); return; }
+  closePopup();
+
+  // Marcar pin activo
+  document.querySelectorAll('.hs-pin').forEach(p=>p.classList.remove('active'));
+  pinWrap.querySelector('.hs-pin').classList.add('active');
+
+  const popup = document.createElement('div');
+  popup.className = 'hs-popup';
+  popup.id = 'active-popup';
+
+  const tc   = S.tiposCustom.find(t=>t.id===h.tipo);
+  const tipo = tc ? tc.nome : h.tipo;
+
+  popup.innerHTML = `
+    <div class="popup-header">
+      <div class="popup-dot ${h.tipo}"></div>
+      <div class="popup-label">${h.label}</div>
+      <button class="popup-close" onclick="closePopup()">✕</button>
+    </div>
+    <div class="popup-tipo">${tipo}</div>
+    ${h.tec ? `<div class="popup-tec">${h.tec}</div>` : '<div style="font-size:.72rem;color:var(--text3)">Sem informação técnica.</div>'}
+  `;
+
+  // Posicionar popup — evitar sair do ecrã
+  const inner   = document.getElementById('inner-'+slideIdx);
+  const iRect   = inner.getBoundingClientRect();
+  const stRect  = stage.getBoundingClientRect();
+
+  const pinX  = iRect.left - stRect.left + (h.x/100)*iRect.width;
+  const pinY  = iRect.top  - stRect.top  + (h.y/100)*iRect.height;
+
+  popup.style.position = 'absolute';
+  popup.style.left = Math.min(pinX + 16, stRect.width - 240) + 'px';
+
+  const popH = 160;
+  if (pinY + popH + 20 > stRect.height) {
+    popup.style.top  = Math.max(0, pinY - popH - 10) + 'px';
+  } else {
+    popup.style.top  = (pinY + 16) + 'px';
+  }
+
+  stage.appendChild(popup);
+  S.activePopup = { id: h.id };
+}
+
+function closePopup() {
+  document.getElementById('active-popup')?.remove();
+  document.querySelectorAll('.hs-pin').forEach(p=>p.classList.remove('active'));
+  S.activePopup = null;
+}
+window.closePopup = closePopup;
+
+// Fechar popup ao tocar no stage
+stage.addEventListener('click', ev => {
+  if (!ev.target.closest('.hs-pin') && !ev.target.closest('.hs-popup')) closePopup();
+});
+
+// ─── TABS ──────────────────────────────────────
+window.switchTab = tab => {
+  const tabs = ['alcados','materiais','ocorrencias','conclusao'];
+  tabs.forEach(t => {
+    document.getElementById('btab-'+t)?.classList.toggle('active', t===tab);
+  });
+  // Stage
+  document.getElementById('stage').style.display        = tab==='alcados' ? 'block' : 'none';
+  document.getElementById('alcado-counter').style.display = tab==='alcados' ? 'flex' : 'none';
+  // Panels
+  ['materiais','ocorrencias','conclusao'].forEach(t => {
+    const el = document.getElementById('panel-'+t);
+    if (el) el.classList.toggle('active', t===tab);
+  });
+  if (tab!=='alcados') closePopup();
+};
+
+// ─── MATERIAIS ─────────────────────────────────
+function renderMateriais() {
+  const el = document.getElementById('mat-list');
+  if (!S.materiais.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📦</div>Sem materiais configurados</div>'; return; }
+  el.innerHTML='';
+  S.materiais.forEach(m => {
+    const card = document.createElement('div');
+    card.className='mat-card';
+    const done = !!S.matCheck[m.id];
+    card.innerHTML=`<div class="mat-check${done?' done':''}" id="mc-${m.id}" onclick="toggleMat('${m.id}')">${done?'✓':''}</div><span class="mat-ref">${m.ref||'—'}</span><span class="mat-nome">${m.nome}</span><span class="mat-qty">${m.qty||'1'}</span>`;
+    el.appendChild(card);
+  });
+}
+
+window.toggleMat = async id => {
+  S.matCheck[id] = !S.matCheck[id];
+  const el = document.getElementById('mc-'+id);
+  if (el) { el.classList.toggle('done', !!S.matCheck[id]); el.textContent = S.matCheck[id]?'✓':''; }
+  try { await updateDoc(doc(db,'obras',S.obraId),{ matCheck: S.matCheck }); }
+  catch(e) { toast('Erro ao guardar','err'); }
+};
+
+// ─── OCORRÊNCIAS ───────────────────────────────
+function renderOcorrencias() {
+  const el = document.getElementById('ocor-list');
+  if (!S.ocorrencias.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📝</div>Sem ocorrências</div>'; return; }
+  el.innerHTML='';
+  [...S.ocorrencias].reverse().forEach(o => {
+    const item=document.createElement('div');
+    item.className='ocor-item';
+    item.innerHTML=`<div class="ocor-meta">${new Date(o.ts).toLocaleString('pt-PT')}</div><div class="ocor-text">${o.texto}</div>`;
+    el.appendChild(item);
+  });
+}
+
+window.addOcorrencia = async () => {
+  const texto = document.getElementById('ocor-input').value.trim();
+  if (!texto) return;
+  const o = { id:'oc_'+Date.now(), texto, ts: new Date().toISOString() };
+  S.ocorrencias.push(o);
+  try {
+    await updateDoc(doc(db,'obras',S.obraId),{ ocorrencias_tecnico: S.ocorrencias });
+    document.getElementById('ocor-input').value='';
+    renderOcorrencias();
+    toast('Ocorrência registada','ok');
+  } catch(e) { toast('Erro: '+e.message,'err'); }
+};
+
+// ─── CONCLUSÃO ─────────────────────────────────
+function setupConclusao() {
+  if (!S.conclusao) return;
+  const wrap = document.getElementById('conclusao-wrap');
+  wrap.innerHTML=`<div class="conclusao-done"><div class="conclusao-icon">✅</div><div class="conclusao-title">Obra concluída</div><div class="conclusao-ts">${new Date(S.conclusao).toLocaleString('pt-PT')}</div></div>`;
+}
+
+window.confirmarConclusao = async () => {
+  const btn = document.getElementById('btn-concluir');
+  btn.disabled=true; btn.textContent='A guardar…';
+  const ts = new Date().toISOString();
+  try {
+    await updateDoc(doc(db,'obras',S.obraId),{ conclusao: ts, estado:'concluido' });
+    S.conclusao = ts;
+    setupConclusao();
+    const b = document.getElementById('h-badge');
+    b.textContent='Concluído'; b.style.color='var(--green)';
+    toast('Conclusão registada ✓','ok');
+  } catch(e) { btn.disabled=false; btn.textContent='Marcar como concluído'; toast('Erro: '+e.message,'err'); }
+};
+
+// ─── TOAST ─────────────────────────────────────
+function toast(msg,type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.className='',2500);
+}
+</script>
+</body>
+</html>
