@@ -956,16 +956,24 @@ function showImage(b64) {
   document.getElementById('upload-zone').style.display='none';
   document.getElementById('image-stage').style.display='flex';
   const img = document.getElementById('alcado-img');
-  img.src=b64;
+  const a   = S.alcados.find(x=>x.key===S.activeKey);
+  // Usar versão já rotada se existir, senão a original
+  img.src = (a && a.imgRotated) ? a.imgRotated : b64;
   img.onload = () => {
-    applyRotation();
-    // Se não há rotação, considerar já confirmado
-    const a = S.alcados.find(x=>x.key===S.activeKey);
+    if (a && !a.imgRotated && a.rotation) applyRotation();
     if (a && !a.rotation) { a.rotacaoConfirmada = true; }
     const btn = document.getElementById('btn-confirmar-rot');
-    if (btn) btn.style.display = (a && a.img && !a.rotacaoConfirmada && a.rotation) ? 'flex' : 'none';
+    if (btn) btn.style.display = (a && a.img && !a.rotacaoConfirmada && a.rotation && !a.imgRotated) ? 'flex' : 'none';
+    renderMarkers();
   };
 }
+
+// Re-render pins ao redimensionar
+let _resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => { if(S.activeKey) renderMarkers(); }, 150);
+});
 
 window.triggerUpload = () => {
   if (!S.activeKey) return toast('Selecciona um alçado primeiro','err');
@@ -1020,28 +1028,54 @@ window.rotateImg = delta => {
 window.confirmarRotacao = () => {
   const a = S.alcados.find(x=>x.key===S.activeKey);
   if (!a) return;
+  // Aplicar rotação permanente via canvas
+  applyRotation();
   a.rotacaoConfirmada = true;
+  a.rotation = 0;  // reset — imagem já está rodada no src
+  S.rotation = 0;
   const btn = document.getElementById('btn-confirmar-rot');
   if (btn) btn.style.display = 'none';
   toast('Rotação confirmada — podes colocar hotspots','ok');
 };
 
 function applyRotation() {
-  const img   = document.getElementById('alcado-img');
-  const wrap  = document.getElementById('image-wrap');
-  const stage = document.getElementById('image-stage');
-  const r     = S.rotation;
-  img.style.transform = r ? `rotate(${r}deg)` : '';
-  if (r===90||r===270) {
-    img.style.maxWidth = 'none';
-    const h = Math.max(300, stage.clientHeight - 48);
-    img.style.width  = h + 'px';
-    wrap.style.width = (img.naturalHeight/img.naturalWidth*h) + 'px';
-    wrap.style.height= h + 'px';
-    wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.justifyContent='center';
-  } else {
-    img.style.maxWidth='100%'; img.style.width='';
-    wrap.style.width=''; wrap.style.height=''; wrap.style.display='';
+  const img  = document.getElementById('alcado-img');
+  const wrap = document.getElementById('image-wrap');
+  const r    = S.rotation;
+
+  // Reset estilos
+  img.style.transform = '';
+  img.style.maxWidth  = '100%';
+  img.style.width     = '';
+  wrap.style.width    = '';
+  wrap.style.height   = '';
+  wrap.style.display  = '';
+
+  if (!r || r === 0) return;
+
+  // Usar canvas para rodar a imagem — coordenadas ficam sempre correctas
+  const canvas  = document.createElement('canvas');
+  const ctx     = canvas.getContext('2d');
+  const sw      = img.naturalWidth;
+  const sh      = img.naturalHeight;
+  const swap    = r === 90 || r === 270;
+
+  canvas.width  = swap ? sh : sw;
+  canvas.height = swap ? sw : sh;
+
+  ctx.translate(canvas.width/2, canvas.height/2);
+  ctx.rotate(r * Math.PI / 180);
+  ctx.drawImage(img, -sw/2, -sh/2);
+
+  // Substituir src da imagem pelo canvas rotado
+  const rotated = canvas.toDataURL('image/jpeg', 0.92);
+  img.src = rotated;
+
+  // Guardar o src rotado no alçado para persistência
+  const a = S.alcados.find(x=>x.key===S.activeKey);
+  if (a) {
+    a.imgRotated = rotated;
+    a.rotation   = r;
   }
 }
 
@@ -1159,11 +1193,20 @@ window.deleteHs = (id,e) => {
 };
 
 // ─── MARKERS ───────────────────────────────────
+function calcPinSize() {
+  const img = document.getElementById('alcado-img');
+  if (!img || !img.naturalWidth) return 28;
+  const w = img.getBoundingClientRect().width;
+  // Pin = 3.5% da largura da imagem renderizada, entre 20px e 42px
+  return Math.min(42, Math.max(20, Math.round(w * 0.035)));
+}
+
 function renderMarkers() {
   const wrap = document.getElementById('image-wrap');
   wrap.querySelectorAll('.hs-marker').forEach(el=>el.remove());
   const hss  = S.activeKey ? (S.hotspots[S.activeKey]||[]) : [];
   let eqCount = 0;
+  const pinSize = calcPinSize();
 
   hss.forEach((h, i) => {
     const isEquip = h.tipo==='equipamento';
@@ -1176,7 +1219,7 @@ function renderMarkers() {
     marker.style.cssText = `position:absolute;transform:translate(-50%,-50%);z-index:10;left:${h.x}%;top:${h.y}%`;
 
     const svgWrap = document.createElement('div');
-    svgWrap.innerHTML = pinSVG(h.tipo, label, 30);
+    svgWrap.innerHTML = pinSVG(h.tipo, label, pinSize);
     const svg = svgWrap.firstChild;
     if (svg) {
       svg.style.transition = 'transform .15s, filter .15s';

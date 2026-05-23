@@ -506,8 +506,8 @@ function buildSlides() {
 
     if (a.img) {
       const img = document.createElement('img');
-      img.src = a.img;
-      img.style.transform = a.rotation ? `rotate(${a.rotation}deg)` : '';
+      // Usar versão já rotada se existir (guardada pelo editor via canvas)
+      img.src = a.imgRotated || a.img;
       img.onload = () => renderPins(i);
       inner.appendChild(img);
     } else {
@@ -526,14 +526,22 @@ function buildSlides() {
   updateNav();
 }
 
+function calcPinSize(idx) {
+  const img = document.querySelector(`#inner-${idx} img`);
+  if (!img) return 28;
+  const w = img.getBoundingClientRect().width;
+  return Math.min(40, Math.max(18, Math.round(w * 0.038)));
+}
+
 function renderPins(idx) {
   const inner = document.getElementById('inner-'+idx);
   if (!inner) return;
   inner.querySelectorAll('.hs-pin-wrap').forEach(el=>el.remove());
 
-  const key  = S.alcados[idx]?.key;
-  const hss  = key ? (S.hotspots[key]||[]) : [];
-  let eqCount = 0;
+  const key     = S.alcados[idx]?.key;
+  const hss     = key ? (S.hotspots[key]||[]) : [];
+  const pinSize = calcPinSize(idx);
+  let eqCount   = 0;
 
   hss.forEach((h, i) => {
     const isEquip = h.tipo==='equipamento';
@@ -544,7 +552,7 @@ function renderPins(idx) {
     wrap.className  = 'hs-pin-wrap';
     wrap.style.left = h.x+'%';
     wrap.style.top  = h.y+'%';
-    wrap.innerHTML  = pinSVG(h.tipo, label, 32);
+    wrap.innerHTML  = pinSVG(h.tipo, label, pinSize);
 
     wrap.addEventListener('click', ev => {
       ev.stopPropagation();
@@ -616,6 +624,18 @@ window.navAlcado = dir => {
   if (next < 0 || next >= S.alcados.length) return;
   goToSlide(next);
 };
+
+// Re-render pins ao redimensionar (orientação mobile)
+let _resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    S.alcados.forEach((_, i) => {
+      const img = document.querySelector(`#inner-${i} img`);
+      if (img && img.complete) renderPins(i);
+    });
+  }, 200);
+});
 
 // ─── SWIPE ─────────────────────────────────────
 let swipeStart = null;
