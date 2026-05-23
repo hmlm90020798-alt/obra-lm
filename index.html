@@ -410,6 +410,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
         <button class="panel-tab active" onclick="switchPanelTab('obra')">Obra</button>
         <button class="panel-tab" onclick="switchPanelTab('alcados')">Alçados</button>
         <button class="panel-tab" onclick="switchPanelTab('materiais')">Materiais</button>
+        <button class="panel-tab" onclick="switchPanelTab('biblioteca')">Biblio.</button>
       </div>
 
       <div class="panel-body">
@@ -456,6 +457,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
               <div class="empty"><div class="empty-icon">📐</div>Sem alçados</div>
             </div>
           </div>
+          <div class="panel-section" style="padding:.5rem .75rem">
+            <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" onclick="showModal('modal-importar')" style="flex:1">↙ Importar de alçado</button>
+              <button class="btn btn-secondary btn-sm" onclick="showModal('modal-biblio-pick')" style="flex:1">☆ Da biblioteca</button>
+            </div>
+          </div>
           <div class="hs-list" id="hs-list">
             <div class="empty"><div class="empty-icon">●</div>Selecciona um alçado</div>
           </div>
@@ -471,6 +478,20 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
           </div>
           <div class="mat-list" id="mat-list">
             <div class="empty"><div class="empty-icon">📦</div>Sem materiais</div>
+          </div>
+        </div>
+
+        <!-- TAB: BIBLIOTECA -->
+        <div data-tab="biblioteca">
+          <div class="panel-section">
+            <div class="panel-label">
+              Biblioteca global
+              <span style="font-size:.6rem;color:var(--text3);font-weight:normal">hotspots reutilizáveis</span>
+            </div>
+            <p style="font-size:.7rem;color:var(--text3);line-height:1.5;margin-bottom:.5rem">Hotspots guardados aqui ficam disponíveis em todos os alçados desta obra.</p>
+          </div>
+          <div class="hs-list" id="biblio-list">
+            <div class="empty"><div class="empty-icon">☆</div>Biblioteca vazia</div>
           </div>
         </div>
 
@@ -537,6 +558,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
           <textarea id="hs-cli" rows="2" placeholder="Descrição para o cliente…"></textarea>
         </div>
         <div class="rp-coords" id="rp-coords"></div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:var(--text2);cursor:pointer;padding:.25rem 0" id="biblio-check-row">
+          <input type="checkbox" id="hs-add-biblio" style="accent-color:var(--accent)">
+          Guardar também na biblioteca
+        </label>
         <div class="rp-actions">
           <button class="btn btn-primary" style="flex:1" onclick="saveHs()">Guardar</button>
           <button class="btn btn-secondary" onclick="closeRp()">Cancelar</button>
@@ -595,6 +620,36 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   </div>
 </div>
 
+<!-- MODAL: IMPORTAR DE ALÇADO -->
+<div class="modal-bg" id="modal-importar">
+  <div class="modal">
+    <div class="modal-title">Importar de <em>Alçado</em></div>
+    <div class="field">
+      <label>Alçado de origem</label>
+      <select id="import-src"></select>
+    </div>
+    <div id="import-hs-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;margin:.5rem 0"></div>
+    <p style="font-size:.7rem;color:var(--text3)">Os hotspots importados ficam sem posição — terás de os colocar na imagem.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-importar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarImportar()">Importar seleccionados</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DA BIBLIOTECA -->
+<div class="modal-bg" id="modal-biblio-pick">
+  <div class="modal">
+    <div class="modal-title">Da <em>Biblioteca</em></div>
+    <div id="biblio-pick-list" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;margin:.5rem 0"></div>
+    <p style="font-size:.7rem;color:var(--text3)">Hotspots adicionados ficam sem posição — coloca-os na imagem.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-biblio-pick')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarBiblio()">Adicionar ao alçado</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- ══════════════════════════════════════════════
@@ -640,17 +695,18 @@ const S = {
   obraId: '', obraNome: '',
   alcados: [], activeKey: null,
   hotspots: {}, materiais: [],
+  biblioteca: [],  // hotspots globais da obra
   mode: 'ver',
   editHsId: null, pendingXY: null, selHsId: null,
-  rotation: 0,   // 0 | 90 | 180 | 270
-  dragging: null, // { id, startX, startY, origX, origY }
+  rotation: 0,
+  dragging: null,
 };
 
 // ─── PANEL TABS ────────────────────────────────
 window.switchPanelTab = tab => {
   document.querySelectorAll('[data-tab]').forEach(el => el.classList.toggle('tab-active', el.dataset.tab === tab));
   document.querySelectorAll('.panel-tab').forEach((b,i) => {
-    const tabs = ['obra','alcados','materiais'];
+    const tabs = ['obra','alcados','materiais','biblioteca'];
     b.classList.toggle('active', tabs[i] === tab);
   });
 };
@@ -670,19 +726,20 @@ window.loadOrCreate = async () => {
       S.alcados   = d.alcados   || [];
       S.hotspots  = d.hotspots  || {};
       S.materiais = d.materiais || [];
+      S.biblioteca= d.biblioteca|| [];
       document.getElementById('obra-nome').value  = d.nome   || '';
       document.getElementById('obra-morada').value= d.morada || '';
       document.getElementById('obra-notas').value = d.notas  || '';
       S.obraNome = d.nome || id;
       toast('Obra carregada', 'ok');
     } else {
-      S.alcados = []; S.hotspots = {}; S.materiais = [];
+      S.alcados = []; S.hotspots = {}; S.materiais = []; S.biblioteca = [];
       toast('Nova obra criada', 'ok');
     }
     document.getElementById('tb-obra').innerHTML = `<b>${S.obraNome}</b> <span style="color:var(--text3)">· ${id}</span>`;
     document.getElementById('links-section').style.display = 'block';
     updateShareLinks();
-    renderAlcados(); renderMateriais();
+    renderAlcados(); renderMateriais(); renderBiblioList();
     showUploadZone();
   } catch(e) { toast('Erro: '+e.message,'err'); }
 };
@@ -697,8 +754,9 @@ window.saveObra = async () => {
       morada:  document.getElementById('obra-morada').value.trim() || '',
       notas:   document.getElementById('obra-notas').value.trim()  || '',
       alcados:  S.alcados,
-      hotspots: S.hotspots,
-      materiais:S.materiais,
+      hotspots:  S.hotspots,
+      materiais: S.materiais,
+      biblioteca:S.biblioteca,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
     const ind = document.getElementById('saved-ind');
@@ -708,7 +766,6 @@ window.saveObra = async () => {
 };
 
 // ─── ALÇADOS ───────────────────────────────────
-window.showModal    = id => { document.getElementById(id).classList.add('open'); };
 window.closeModal   = id => { document.getElementById(id).classList.remove('open'); };
 
 window.addAlcado = () => {
@@ -853,7 +910,7 @@ document.getElementById('image-wrap').addEventListener('click', ev => {
   document.getElementById('hs-cli').value='';
   document.getElementById('rp-coords').textContent=`x: ${x}%  ·  y: ${y}%`;
   document.getElementById('rp-title').textContent='Novo Hotspot';
-  selTipo('tomada'); openRp();
+  selTipo('tomada'); openRp(false);
 });
 
 document.getElementById('image-wrap').addEventListener('mousemove', ev => {
@@ -866,7 +923,12 @@ document.getElementById('image-wrap').addEventListener('mousemove', ev => {
 });
 
 // ─── HOTSPOT FORM ──────────────────────────────
-function openRp()  { document.getElementById('right-panel').classList.add('open'); }
+function openRp(editMode) {
+  document.getElementById('right-panel').classList.add('open');
+  const row = document.getElementById('biblio-check-row');
+  if (row) row.style.display = editMode ? 'none' : 'flex';
+  if (!editMode) { const cb=document.getElementById('hs-add-biblio'); if(cb) cb.checked=false; }
+}
 window.closeRp = () => { document.getElementById('right-panel').classList.remove('open'); S.pendingXY=null; S.editHsId=null; };
 
 let currentTipo='tomada';
@@ -878,21 +940,32 @@ window.selTipo = t => {
 };
 
 window.saveHs = () => {
-  const label = document.getElementById('hs-label').value.trim();
-  const tec   = document.getElementById('hs-tec').value.trim();
-  const cli   = document.getElementById('hs-cli').value.trim();
+  const label  = document.getElementById('hs-label').value.trim();
+  const tec    = document.getElementById('hs-tec').value.trim();
+  const cli    = document.getElementById('hs-cli').value.trim();
+  const addBib = document.getElementById('hs-add-biblio')?.checked;
   if (!label) return toast('Insere um label','err');
   const key = S.activeKey;
   if (!S.hotspots[key]) S.hotspots[key]=[];
   if (S.editHsId) {
     const h=S.hotspots[key].find(h=>h.id===S.editHsId);
     if(h) Object.assign(h,{label,tec,cli,tipo:currentTipo});
+    // Actualizar na biblioteca se existir
+    const bh=S.biblioteca.find(b=>b.id===h?.bibId);
+    if(bh) Object.assign(bh,{label,tec,cli,tipo:currentTipo});
   } else {
     if (!S.pendingXY) return;
-    S.hotspots[key].push({id:'hs_'+Date.now(), x:S.pendingXY.x, y:S.pendingXY.y, tipo:currentTipo, label, tec, cli});
+    const id = 'hs_'+Date.now();
+    let bibId = null;
+    if (addBib) {
+      bibId = 'bib_'+Date.now();
+      S.biblioteca.push({id:bibId, tipo:currentTipo, label, tec, cli});
+      renderBiblioList();
+    }
+    S.hotspots[key].push({id, x:S.pendingXY.x, y:S.pendingXY.y, tipo:currentTipo, label, tec, cli, bibId});
   }
   closeRp(); renderHsList(); renderMarkers(); renderAlcados();
-  toast('Hotspot guardado','ok');
+  toast(addBib?'Guardado + adicionado à biblioteca':'Hotspot guardado','ok');
 };
 
 // ─── HS LIST ───────────────────────────────────
@@ -920,7 +993,7 @@ window.editHs = id => {
   document.getElementById('rp-coords').textContent=`x: ${h.x}%  ·  y: ${h.y}%`;
   document.getElementById('rp-title').textContent='Editar Hotspot';
   selTipo(h.tipo||'tomada');
-  renderHsList(); highlightPin(id); openRp();
+  renderHsList(); highlightPin(id); openRp(true);
 };
 
 window.deleteHs = (id,e) => {
@@ -985,6 +1058,110 @@ function highlightPin(id) {
 }
 
 // ─── MATERIAIS ─────────────────────────────────
+// ─── BIBLIOTECA ────────────────────────────────
+function renderBiblioList() {
+  const el = document.getElementById('biblio-list');
+  if (!el) return;
+  if (!S.biblioteca.length) { el.innerHTML='<div class="empty"><div class="empty-icon">☆</div>Biblioteca vazia</div>'; return; }
+  el.innerHTML='';
+  S.biblioteca.forEach(b => {
+    const item=document.createElement('div');
+    item.className='hs-item';
+    item.innerHTML=`<div class="hs-item-top"><div class="hs-tipo-dot ${b.tipo}"></div><span class="hs-item-label">${b.label}</span><button class="hs-item-del" onclick="deleteBiblio('${b.id}',event)">✕</button></div><div class="hs-item-preview">${b.tec||'—'}</div>`;
+    el.appendChild(item);
+  });
+}
+
+window.deleteBiblio = (id,e) => {
+  e.stopPropagation();
+  S.biblioteca = S.biblioteca.filter(b=>b.id!==id);
+  renderBiblioList();
+};
+
+// ─── IMPORTAR DE ALÇADO ─────────────────────────
+window.showModal = id => {
+  if (id==='modal-importar') {
+    if (!S.activeKey) return toast('Selecciona um alçado de destino primeiro','err');
+    const sel = document.getElementById('import-src');
+    sel.innerHTML = S.alcados.filter(a=>a.key!==S.activeKey).map(a=>`<option value="${a.key}">${a.nome}</option>`).join('');
+    if (!sel.options.length) return toast('Não há outros alçados','err');
+    renderImportList(sel.value);
+    sel.onchange = () => renderImportList(sel.value);
+  }
+  if (id==='modal-biblio-pick') {
+    if (!S.activeKey) return toast('Selecciona um alçado de destino primeiro','err');
+    renderBiblioPickList();
+  }
+  document.getElementById(id).classList.add('open');
+};
+
+function renderImportList(srcKey) {
+  const el  = document.getElementById('import-hs-list');
+  const hss = S.hotspots[srcKey] || [];
+  if (!hss.length) { el.innerHTML='<div style="font-size:.75rem;color:var(--text3);padding:.5rem">Sem hotspots neste alçado</div>'; return; }
+  el.innerHTML='';
+  hss.forEach(h => {
+    const row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:.78rem';
+    row.innerHTML=`<input type="checkbox" data-id="${h.id}" data-key="${srcKey}" style="accent-color:var(--accent)"><div class="hs-tipo-dot ${h.tipo}" style="width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="flex:1">${h.label}</span>`;
+    el.appendChild(row);
+  });
+}
+
+window.confirmarImportar = () => {
+  const checked = document.querySelectorAll('#import-hs-list input:checked');
+  if (!checked.length) return toast('Selecciona pelo menos um hotspot','err');
+  const srcKey = checked[0].dataset.key;
+  let count=0;
+  checked.forEach(cb => {
+    const h = (S.hotspots[srcKey]||[]).find(x=>x.id===cb.dataset.id);
+    if (!h) return;
+    // Importar sem posição — posição a definir pelo utilizador
+    S.hotspots[S.activeKey].push({
+      id: 'hs_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      x: 50, y: 50,  // centro como placeholder
+      tipo: h.tipo, label: h.label, tec: h.tec, cli: h.cli,
+      importadoDe: srcKey,
+    });
+    count++;
+  });
+  closeModal('modal-importar');
+  renderHsList(); renderMarkers(); renderAlcados();
+  toast(`${count} hotspot(s) importado(s) — ajusta a posição na imagem`,'ok');
+};
+
+function renderBiblioPickList() {
+  const el = document.getElementById('biblio-pick-list');
+  if (!S.biblioteca.length) { el.innerHTML='<div style="font-size:.75rem;color:var(--text3);padding:.5rem">Biblioteca vazia</div>'; return; }
+  el.innerHTML='';
+  S.biblioteca.forEach(b => {
+    const row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:.78rem';
+    row.innerHTML=`<input type="checkbox" data-id="${b.id}" style="accent-color:var(--accent)"><div class="hs-tipo-dot ${b.tipo}" style="width:6px;height:6px;border-radius:50%;flex-shrink:0"></div><span style="flex:1">${b.label}</span>`;
+    el.appendChild(row);
+  });
+}
+
+window.confirmarBiblio = () => {
+  const checked = document.querySelectorAll('#biblio-pick-list input:checked');
+  if (!checked.length) return toast('Selecciona pelo menos um hotspot','err');
+  let count=0;
+  checked.forEach(cb => {
+    const b = S.biblioteca.find(x=>x.id===cb.dataset.id);
+    if (!b) return;
+    S.hotspots[S.activeKey].push({
+      id: 'hs_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      x: 50, y: 50,
+      tipo: b.tipo, label: b.label, tec: b.tec, cli: b.cli,
+      bibId: b.id,
+    });
+    count++;
+  });
+  closeModal('modal-biblio-pick');
+  renderHsList(); renderMarkers(); renderAlcados();
+  toast(`${count} hotspot(s) adicionado(s) — ajusta a posição na imagem`,'ok');
+};
+
 window.addMaterial = () => {
   const ref  = document.getElementById('mat-ref').value.trim();
   const nome = document.getElementById('mat-nome').value.trim();
