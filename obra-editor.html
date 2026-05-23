@@ -259,6 +259,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .image-wrap { position: relative; display: inline-block; user-select: none; line-height: 0; }
 .image-wrap img { display: block; max-width: 100%; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,.4); }
 .image-wrap.placing { cursor: crosshair; }
+.image-wrap.dragging-pin { cursor: grabbing; }
+.hs-pin.draggable { cursor: grab; }
+.hs-pin.draggable:active { cursor: grabbing; }
 
 /* MARKERS */
 .hs-marker { position: absolute; transform: translate(-50%, -50%); z-index: 10; }
@@ -483,6 +486,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
         </div>
         <span class="coord-pill" id="coord-pill">—</span>
         <span class="canvas-hint" id="canvas-hint">Selecciona um alçado para começar</span>
+        <div style="margin-left:auto;display:flex;gap:.3rem">
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="rotateImg(-90)" title="Rodar esquerda">↺</button>
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="rotateImg(90)"  title="Rodar direita">↻</button>
+        </div>
       </div>
 
       <div class="upload-zone" id="upload-zone" onclick="triggerUpload()">
@@ -635,6 +642,8 @@ const S = {
   hotspots: {}, materiais: [],
   mode: 'ver',
   editHsId: null, pendingXY: null, selHsId: null,
+  rotation: 0,   // 0 | 90 | 180 | 270
+  dragging: null, // { id, startX, startY, origX, origY }
 };
 
 // ─── PANEL TABS ────────────────────────────────
@@ -743,10 +752,11 @@ function activateAlcado(key) {
   S.activeKey = key;
   const a = S.alcados.find(x=>x.key===key);
   if (!a) return;
+  S.rotation = a.rotation || 0;
   renderAlcados();
   renderHsList();
   switchPanelTab('alcados');
-  if (a.img) showImage(a.img);
+  if (a.img) { showImage(a.img); }
   else showUploadZone();
   renderMarkers();
 }
@@ -759,7 +769,9 @@ function showUploadZone() {
 function showImage(b64) {
   document.getElementById('upload-zone').style.display='none';
   document.getElementById('image-stage').style.display='flex';
-  document.getElementById('alcado-img').src=b64;
+  const img = document.getElementById('alcado-img');
+  img.src=b64;
+  img.onload = applyRotation;
 }
 
 window.triggerUpload = () => {
@@ -797,6 +809,35 @@ window.setMode = m => {
     ? 'Clica na imagem para colocar um hotspot'
     : '';
 };
+
+// ─── ROTAÇÃO ─────────────────────────────────
+window.rotateImg = delta => {
+  const a = S.alcados.find(x=>x.key===S.activeKey);
+  if (!a || !a.img) return toast('Sem imagem para rodar','err');
+  S.rotation = ((S.rotation + delta) % 360 + 360) % 360;
+  a.rotation = S.rotation;
+  applyRotation();
+  toast('Imagem rodada','ok');
+};
+
+function applyRotation() {
+  const img   = document.getElementById('alcado-img');
+  const wrap  = document.getElementById('image-wrap');
+  const stage = document.getElementById('image-stage');
+  const r     = S.rotation;
+  img.style.transform = r ? `rotate(${r}deg)` : '';
+  if (r===90||r===270) {
+    img.style.maxWidth = 'none';
+    const h = Math.max(300, stage.clientHeight - 48);
+    img.style.width  = h + 'px';
+    wrap.style.width = (img.naturalHeight/img.naturalWidth*h) + 'px';
+    wrap.style.height= h + 'px';
+    wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.justifyContent='center';
+  } else {
+    img.style.maxWidth='100%'; img.style.width='';
+    wrap.style.width=''; wrap.style.height=''; wrap.style.display='';
+  }
+}
 
 // ─── CANVAS CLICK ──────────────────────────────
 document.getElementById('image-wrap').addEventListener('click', ev => {
@@ -898,10 +939,45 @@ function renderMarkers() {
     const m=document.createElement('div');
     m.className='hs-marker'; m.id='mk-'+h.id;
     m.style.left=h.x+'%'; m.style.top=h.y+'%';
-    m.innerHTML=`<div class="hs-pin ${h.tipo}" title="${h.label}">${i+1}</div>`;
-    m.querySelector('.hs-pin').onclick=ev=>{ev.stopPropagation();editHs(h.id);};
+    m.innerHTML=`<div class="hs-pin draggable ${h.tipo}" title="${h.label}">${i+1}</div>`;
+    const pin=m.querySelector('.hs-pin');
+    // Click para editar (apenas sem drag)
+    pin.addEventListener('click', ev=>{ ev.stopPropagation(); if(!S._didDrag) editHs(h.id); S._didDrag=false; });
+    // Drag para mover
+    pin.addEventListener('mousedown', ev=>startDrag(ev,h.id));
     wrap.appendChild(m);
   });
+}
+
+function startDrag(ev, id) {
+  ev.stopPropagation(); ev.preventDefault();
+  const img  = document.getElementById('alcado-img');
+  const rect = img.getBoundingClientRect();
+  const h    = (S.hotspots[S.activeKey]||[]).find(x=>x.id===id);
+  if (!h) return;
+  S.dragging = { id, rect, origX: h.x, origY: h.y };
+  S._didDrag = false;
+  document.getElementById('image-wrap').classList.add('dragging-pin');
+
+  const onMove = ev2 => {
+    if (!S.dragging) return;
+    const nx = +((ev2.clientX - S.dragging.rect.left) / S.dragging.rect.width  * 100).toFixed(2);
+    const ny = +((ev2.clientY - S.dragging.rect.top)  / S.dragging.rect.height * 100).toFixed(2);
+    const bx = Math.min(99,Math.max(1,nx));
+    const by = Math.min(99,Math.max(1,ny));
+    h.x = bx; h.y = by;
+    const mk = document.getElementById('mk-'+id);
+    if(mk){mk.style.left=bx+'%';mk.style.top=by+'%';}
+    S._didDrag = true;
+  };
+  const onUp = () => {
+    document.getElementById('image-wrap').classList.remove('dragging-pin');
+    S.dragging = null;
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+  };
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
 }
 function highlightPin(id) {
   document.querySelectorAll('.hs-pin').forEach(p=>p.classList.remove('active'));
