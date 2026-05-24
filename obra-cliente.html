@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0c0e12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>A tua Obra · LM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0c0e12;
+  --surface: #111318;
+  --raised:  #161920;
+  --border:  #1d2130;
+  --border2: #252a3a;
+  --accent:  #4f7cff;
+  --adim:    rgba(79,124,255,.12);
+  --green:   #2dd898;
+  --gdim:    rgba(45,216,152,.1);
+  --amber:   #e8a234;
+  --red:     #f05252;
+  --text:    #d8dce8;
+  --text2:   #9ca3b4;
+  --text3:   #5a6380;
+  --mono:    'DM Mono', monospace;
+  --serif:   'Fraunces', serif;
+  --sans:    'Instrument Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── HEADER ── */
+.header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: .75rem 1.25rem 0;
+  background: linear-gradient(var(--surface), transparent);
+}
+.header-inner {
+  display: flex; align-items: center; gap: .75rem;
+  padding-bottom: .75rem; border-bottom: 1px solid var(--border);
+}
+.h-logo { font-family: var(--mono); font-size: .6rem; letter-spacing: .15em; text-transform: uppercase; color: var(--text3); }
+.h-logo b { color: var(--accent); }
+.h-info { flex: 1; min-width: 0; }
+.h-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 300; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h-title em { font-style: italic; color: var(--accent); }
+.h-sub { font-size: .65rem; color: var(--text3); font-family: var(--mono); margin-top: .1rem; }
+.h-badge { font-family: var(--mono); font-size: .58rem; text-transform: uppercase; letter-spacing: .08em; padding: .18rem .5rem; border-radius: 20px; flex-shrink: 0; }
+.h-badge.em_obra   { background: rgba(232,162,52,.12); color: var(--amber); border: 1px solid rgba(232,162,52,.25); }
+.h-badge.concluido { background: var(--gdim); color: var(--green); border: 1px solid rgba(45,216,152,.25); }
+
+/* ── NAV BAR ── */
+.nav-bar {
+  position: fixed; top: 80px; left: 0; right: 0; z-index: 90;
+  display: flex; align-items: center; gap: .4rem;
+  padding: .45rem .75rem; height: 44px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.nav-btn { width: 30px; height: 30px; border-radius: 5px; background: var(--raised); border: 1px solid var(--border); color: var(--text2); font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+.nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: .28; cursor: default; }
+.nav-select { flex: 1; background: var(--raised); border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: .72rem; padding: .28rem .5rem; border-radius: 5px; outline: none; cursor: pointer; }
+.nav-idx { font-family: var(--mono); font-size: .65rem; color: var(--text3); flex-shrink: 0; min-width: 28px; text-align: center; }
+
+/* ── STAGE ── */
+.stage {
+  position: fixed; top: 124px; left: 0; right: 0;
+  bottom: calc(50px + env(safe-area-inset-bottom));
+  background: #080a0e; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.slides { position: relative; width: 100%; height: 100%; }
+.slide {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .38s ease, transform .38s cubic-bezier(.4,0,.2,1);
+  transform: scale(.97);
+}
+.slide.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+.slide.enter-l { transform: translateX(5%)  scale(.97); }
+.slide.enter-r { transform: translateX(-5%) scale(.97); }
+
+.img-wrap { position: relative; display: inline-block; line-height: 0; max-width: 100%; max-height: 100%; }
+.img-wrap img { display: block; max-width: 100%; max-height: calc(100svh - 124px - 50px); width: auto; height: auto; object-fit: contain; }
+.img-wrap.planta img { filter: invert(1) brightness(.88) contrast(1.05); }
+
+/* Zoom */
+.zoom-btns { position: absolute; top: .5rem; right: .65rem; z-index: 40; display: flex; gap: .25rem; }
+.zoom-btn { width: 30px; height: 30px; border-radius: 5px; background: rgba(17,19,24,.85); border: 1px solid var(--border); color: var(--text2); font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; backdrop-filter: blur(4px); }
+.zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Pins */
+.pin-wrap { position: absolute; transform: translate(-50%,-50%); z-index: 20; -webkit-tap-highlight-color: transparent; }
+.pin-wrap svg { display: block; cursor: pointer; transition: transform .18s cubic-bezier(.34,1.56,.64,1), filter .18s; filter: drop-shadow(0 2px 5px rgba(0,0,0,.75)); }
+.pin-wrap svg:active { transform: scale(.85) !important; }
+.pin-wrap.active svg { transform: scale(1.2); filter: drop-shadow(0 0 7px rgba(255,255,255,.3)) drop-shadow(0 2px 5px rgba(0,0,0,.75)); }
+
+/* Popup — versão cliente: mais visual, menos técnico */
+.popup {
+  position: absolute; z-index: 50;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 12px; padding: .9rem 1rem; width: 220px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  animation: popIn .16s cubic-bezier(.16,1,.3,1);
+}
+@keyframes popIn { from { opacity:0; transform:scale(.9) translateY(4px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.pop-head { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .5rem; }
+.pop-label { font-size: .88rem; font-weight: 600; line-height: 1.3; flex: 1; font-family: var(--serif); }
+.pop-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: .9rem; padding: .1rem; flex-shrink: 0; }
+.pop-tipo { font-size: .6rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: .45rem; }
+.pop-cli { font-size: .8rem; color: var(--text2); line-height: 1.6; }
+.pop-empty { font-size: .72rem; color: var(--text3); }
+
+/* ── TABS ── */
+.btabs {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  display: flex; background: var(--surface); border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom); height: calc(50px + env(safe-area-inset-bottom));
+}
+.btab { flex: 1; border: none; background: transparent; color: var(--text3); font-family: var(--sans); font-size: .6rem; font-weight: 500; cursor: pointer; transition: color .15s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .18rem; padding: .5rem .25rem .4rem; }
+.btab.active { color: var(--accent); }
+.btab-ico { font-size: 1.1rem; line-height: 1; }
+
+/* ── PANELS ── */
+.panel { position: fixed; top: 124px; left: 0; right: 0; bottom: calc(50px + env(safe-area-inset-bottom)); background: var(--bg); overflow-y: auto; display: none; flex-direction: column; gap: .5rem; padding: .75rem; }
+.panel.active { display: flex; }
+.sec-label { font-family: var(--mono); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); padding: .2rem 0; }
+
+/* Materiais — versão cliente: mais visual */
+.mat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .75rem 1rem; }
+.mat-nome { font-size: .88rem; font-weight: 600; margin-bottom: .25rem; }
+.mat-ref  { font-family: var(--mono); font-size: .65rem; color: var(--text3); }
+.mat-notas { font-size: .75rem; color: var(--text2); margin-top: .3rem; line-height: 1.5; }
+
+/* Aprovação */
+.aprov-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 2rem 1rem; text-align: center; gap: 1rem; }
+.aprov-icon { font-size: 3rem; }
+.aprov-title { font-family: var(--serif); font-size: 1.3rem; font-weight: 300; }
+.aprov-title em { font-style: italic; color: var(--accent); }
+.aprov-sub { font-size: .82rem; color: var(--text3); line-height: 1.6; max-width: 260px; }
+.aprov-done { color: var(--green); }
+.aprov-ts { font-family: var(--mono); font-size: .72rem; color: var(--text2); }
+.btn-aprov { padding: .75rem 2rem; border-radius: 8px; border: none; background: var(--accent); color: #fff; font-family: var(--sans); font-size: .9rem; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+.btn-aprov:hover { opacity: .85; }
+.btn-aprov:disabled { background: var(--border); color: var(--text3); cursor: default; }
+
+/* ── EMPTY / LOADING ── */
+.empty { display: flex; flex-direction: column; align-items: center; padding: 3rem 1rem; color: var(--text3); font-size: .8rem; text-align: center; gap: .5rem; }
+.empty-ico { font-size: 1.75rem; opacity: .2; }
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: .85rem; color: var(--text3); font-size: .8rem; }
+.spinner { width: 22px; height: 22px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TOAST ── */
+#toast { position: fixed; bottom: 4.5rem; left: 50%; transform: translateX(-50%) translateY(.5rem); background: var(--raised); border: 1px solid var(--border2); color: var(--text); padding: .42rem .95rem; border-radius: 5px; font-size: .72rem; font-family: var(--mono); opacity: 0; pointer-events: none; transition: all .2s; z-index: 999; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.ok  { border-color: var(--green); color: var(--green); }
+#toast.err { border-color: var(--red);   color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="h-logo">LM · <b>Obra</b></div>
+    <div class="h-info">
+      <div class="h-title" id="h-title">A carregar…</div>
+      <div class="h-sub"   id="h-sub">Projecto de cozinha</div>
+    </div>
+    <div class="h-badge em_obra" id="h-badge">Em obra</div>
+  </div>
+</div>
+
+<!-- NAV BAR -->
+<div class="nav-bar" id="nav-bar">
+  <button class="nav-btn" id="nav-prev" onclick="navSlide(-1)" disabled>‹</button>
+  <select class="nav-select" id="nav-sel" onchange="goTo(parseInt(this.value))"></select>
+  <span class="nav-idx" id="nav-idx">—</span>
+  <button class="nav-btn" id="nav-next" onclick="navSlide(1)">›</button>
+</div>
+
+<!-- STAGE -->
+<div class="stage" id="stage">
+  <div class="loading" id="stage-loading"><div class="spinner"></div>A carregar…</div>
+  <div class="slides" id="slides" style="display:none"></div>
+  <div class="zoom-btns">
+    <button class="zoom-btn" onclick="zoom(1.35)">＋</button>
+    <button class="zoom-btn" onclick="zoom(0)">⊙</button>
+    <button class="zoom-btn" onclick="zoom(0.74)">－</button>
+  </div>
+</div>
+
+<!-- PANELS -->
+<div class="panel" id="panel-materiais">
+  <div class="sec-label">Artigos incluídos no projecto</div>
+  <div id="mat-list"></div>
+</div>
+
+<div class="panel" id="panel-aprovacao">
+  <div class="aprov-wrap" id="aprov-wrap">
+    <div class="aprov-icon">✍️</div>
+    <div class="aprov-title">Aprovar <em>projecto</em></div>
+    <div class="aprov-sub">Ao confirmar estás a aprovar o projecto de cozinha e autorizar o avanço para obra.</div>
+    <button class="btn-aprov" id="btn-aprov" onclick="confirmarAprovacao()">Aprovar projecto</button>
+  </div>
+</div>
+
+<!-- BOTTOM TABS -->
+<div class="btabs">
+  <button class="btab active" id="bt-alcados"   onclick="switchTab('alcados')">  <span class="btab-ico">🏠</span>Projecto</button>
+  <button class="btab"        id="bt-materiais" onclick="switchTab('materiais')"><span class="btab-ico">📦</span>Artigos</button>
+  <button class="btab"        id="bt-aprovacao" onclick="switchTab('aprovacao')"><span class="btab-ico">✅</span>Aprovar</button>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { db }          from './firebase.js';
+import { getTipo, pinSVG, pinSz } from './tipos.js';
+import { doc, getDoc, updateDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const S = {
+  obraId:'', alcados:[], idx:0,
+  hotspots:{}, tiposCustom:[],
+  materiais:[], aprovacao:null,
+  popup:null,
+  Z:{scale:1,x:0,y:0},
+  swipeStart:null, pinchDist:0, isPinch:false,
+};
+
+const obraId = new URLSearchParams(location.search).get('obra');
+if (!obraId) {
+  document.getElementById('h-title').textContent = 'URL inválido';
+} else {
+  S.obraId = obraId;
+  loadObra();
+}
+
+async function loadObra() {
+  try {
+    const snap = await getDoc(doc(db,'obras',obraId));
+    if (!snap.exists()) throw new Error('Obra não encontrada');
+    const d = snap.data();
+    S.alcados    = d.alcados    || [];
+    S.hotspots   = d.hotspots   || {};
+    S.tiposCustom= d.tiposCustom|| [];
+    S.materiais  = d.materiais  || [];
+    S.aprovacao  = d.aprovacao  || null;
+
+    document.getElementById('h-title').innerHTML = `<em>${d.nome||obraId}</em>`;
+    document.getElementById('h-sub').textContent = d.morada || 'Projecto de cozinha';
+
+    if (S.aprovacao) {
+      const b=document.getElementById('h-badge');
+      b.textContent='Aprovado'; b.className='h-badge concluido';
+    }
+
+    await loadImagens();
+    buildSlides();
+    renderMateriais();
+    setupAprovacao();
+  } catch(e) {
+    document.getElementById('stage-loading').innerHTML=`<div class="empty"><div class="empty-ico">⚠️</div><div>${e.message}</div></div>`;
+  }
+}
+
+async function loadImagens() {
+  await Promise.all(S.alcados.map(async a => {
+    if (!a.temImg) return;
+    try {
+      const s=await getDoc(doc(db,'obras_imagens',`${obraId}_${a.key}`));
+      if (s.exists()) a.img=s.data().img;
+    } catch(_){}
+  }));
+}
+
+/* ── Slides ── */
+function buildSlides() {
+  document.getElementById('stage-loading').style.display='none';
+  const wrap=document.getElementById('slides');
+  wrap.style.display='block'; wrap.innerHTML='';
+  if (!S.alcados.length) { wrap.innerHTML='<div class="empty" style="height:100%"><div class="empty-ico">📐</div>Sem alçados</div>'; return; }
+
+  S.alcados.forEach((a,i)=>{
+    const slide=document.createElement('div');
+    slide.className='slide'+(i===0?' active':''); slide.id='slide-'+i;
+    const iw=document.createElement('div');
+    iw.className='img-wrap '+(a.tipo==='planta'?'planta':'foto'); iw.id='iw-'+i;
+    if (a.img) {
+      const img=document.createElement('img');
+      img.src=a.img; img.onload=()=>renderPins(i);
+      iw.appendChild(img);
+    } else {
+      iw.innerHTML='<div class="empty" style="padding:3rem"><div class="empty-ico">🖼</div>Sem imagem</div>';
+    }
+    slide.appendChild(iw); wrap.appendChild(slide);
+  });
+
+  const sel=document.getElementById('nav-sel');
+  sel.innerHTML=S.alcados.map((a,i)=>`<option value="${i}">${a.nome}</option>`).join('');
+  updateNav();
+}
+
+function updateNav() {
+  const n=S.alcados.length;
+  document.getElementById('nav-sel').value=String(S.idx);
+  document.getElementById('nav-idx').textContent=n?`${S.idx+1}/${n}`:'—';
+  document.getElementById('nav-prev').disabled=S.idx===0;
+  document.getElementById('nav-next').disabled=S.idx>=n-1;
+}
+
+window.navSlide=dir=>goTo(S.idx+dir);
+window.goTo=function(idx){
+  idx=Number(idx);
+  if(idx<0||idx>=S.alcados.length||idx===S.idx) return;
+  const slides=document.querySelectorAll('.slide');
+  const dir=idx>S.idx?'l':'r';
+  const prev=S.idx; S.idx=idx;
+  slides[idx].classList.add('enter-'+dir);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    slides[prev].classList.remove('active');
+    slides[idx].classList.remove('enter-l','enter-r');
+    slides[idx].classList.add('active');
+    zoomReset(); closePopup(); updateNav();
+    setTimeout(()=>slides[prev].classList.remove('active'),400);
+  }));
+};
+
+/* ── Zoom ── */
+function applyZoom(){
+  const iw=document.getElementById('iw-'+S.idx);
+  if(!iw) return;
+  iw.style.transform=S.Z.scale>1?`scale(${S.Z.scale}) translate(${S.Z.x/S.Z.scale}px,${S.Z.y/S.Z.scale}px)`:'';
+}
+function zoomReset(){S.Z={scale:1,x:0,y:0};applyZoom();}
+window.zoom=f=>{
+  if(f===0){zoomReset();return;}
+  S.Z.scale=Math.min(5,Math.max(1,+(S.Z.scale*f).toFixed(2)));
+  if(S.Z.scale<=1){S.Z.x=0;S.Z.y=0;} applyZoom();
+};
+document.getElementById('stage').addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.15:0.87);},{passive:false});
+
+const stage=document.getElementById('stage');
+stage.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){S.isPinch=true;S.pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);e.preventDefault();}
+  else if(e.touches.length===1){
+    if(S.Z.scale>1) S.panStart={x:e.touches[0].clientX-S.Z.x,y:e.touches[0].clientY-S.Z.y};
+    else S.swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    S.isPinch=false;
+  }
+},{passive:false});
+stage.addEventListener('touchmove',e=>{
+  if(e.touches.length===2&&S.isPinch){e.preventDefault();const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);S.Z.scale=Math.min(5,Math.max(1,S.Z.scale*(d/S.pinchDist)));S.pinchDist=d;applyZoom();}
+  else if(e.touches.length===1&&S.Z.scale>1&&S.panStart){e.preventDefault();S.Z.x=e.touches[0].clientX-S.panStart.x;S.Z.y=e.touches[0].clientY-S.panStart.y;applyZoom();}
+},{passive:false});
+stage.addEventListener('touchend',e=>{
+  if(S.isPinch){S.isPinch=false;return;}
+  if(S.Z.scale>1||!S.swipeStart) return;
+  const dx=e.changedTouches[0].clientX-S.swipeStart.x,dy=e.changedTouches[0].clientY-S.swipeStart.y;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45) goTo(S.idx+(dx<0?1:-1));
+  S.swipeStart=null;
+},{passive:true});
+
+/* ── Pins — cliente vê info cliente ── */
+function renderPins(idx){
+  const iw=document.getElementById('iw-'+idx);
+  if(!iw) return;
+  iw.querySelectorAll('.pin-wrap').forEach(el=>el.remove());
+  const img=iw.querySelector('img');
+  const key=S.alcados[idx]?.key;
+  const hss=key?(S.hotspots[key]||[]):[];
+  let eq=0;
+  hss.forEach((h,i)=>{
+    const isEq=h.tipo==='equipamento'; if(isEq) eq++;
+    const lbl=isEq?String(eq):String(i+1);
+    const w=img?.getBoundingClientRect().width||400;
+    const sz=pinSz(h.pinSize||'m',w);
+    // Cliente só vê hotspots com info cliente preenchida
+    if (!h.cli && !h.label) return;
+    const pw=document.createElement('div');
+    pw.className='pin-wrap'; pw.style.left=h.x+'%'; pw.style.top=h.y+'%';
+    pw.innerHTML=pinSVG(h.tipo,lbl,sz,S.tiposCustom);
+    pw.addEventListener('click',ev=>{ev.stopPropagation();openPopup(h,pw,idx);});
+    iw.appendChild(pw);
+  });
+}
+
+let _rt;
+window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{S.alcados.forEach((_,i)=>{const img=document.querySelector(`#iw-${i} img`);if(img?.complete)renderPins(i);});},150);});
+
+/* ── Popup cliente ── */
+function openPopup(h,pw,slideIdx){
+  closePopup(); pw.classList.add('active');
+  const popup=document.createElement('div');
+  popup.className='popup'; popup.id='popup';
+  const t=getTipo(h.tipo,S.tiposCustom);
+  popup.innerHTML=`
+    <div class="pop-head">
+      <div style="flex-shrink:0">${pinSVG(h.tipo,'',20,S.tiposCustom)}</div>
+      <div class="pop-label">${h.label}</div>
+      <button class="pop-close" onclick="closePopup()">✕</button>
+    </div>
+    <div class="pop-tipo" style="color:${t.cor}">${t.label}</div>
+    ${h.cli?`<div class="pop-cli">${h.cli}</div>`:`<div class="pop-empty">—</div>`}`;
+  const img=document.querySelector(`#iw-${slideIdx} img`);
+  const stRect=stage.getBoundingClientRect();
+  const iRect=img?img.getBoundingClientRect():stRect;
+  const px=iRect.left-stRect.left+(h.x/100)*iRect.width;
+  const py=iRect.top-stRect.top+(h.y/100)*iRect.height;
+  popup.style.cssText=`position:absolute;left:${Math.min(px+14,stRect.width-232)}px;top:${py+160+20>stRect.height?Math.max(4,py-160-10):py+14}px`;
+  stage.appendChild(popup); S.popup={id:h.id};
+}
+function closePopup(){document.getElementById('popup')?.remove();document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));S.popup=null;}
+window.closePopup=closePopup;
+stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
+
+/* ── Tabs ── */
+window.switchTab=tab=>{
+  ['alcados','materiais','aprovacao'].forEach(t=>{
+    document.getElementById('bt-'+t)?.classList.toggle('active',t===tab);
+    if(t!=='alcados') document.getElementById('panel-'+t)?.classList.toggle('active',t===tab);
+  });
+  const showStage=tab==='alcados';
+  document.getElementById('stage').style.display=showStage?'flex':'none';
+  document.getElementById('nav-bar').style.display=showStage?'flex':'none';
+  if(!showStage) closePopup();
+};
+
+/* ── Materiais ── */
+function renderMateriais(){
+  const el=document.getElementById('mat-list');
+  if(!S.materiais.length){el.innerHTML='<div class="empty"><div class="empty-ico">📦</div>Sem artigos</div>';return;}
+  el.innerHTML='';
+  S.materiais.forEach(m=>{
+    const card=document.createElement('div');
+    card.className='mat-card';
+    card.innerHTML=`<div class="mat-nome">${m.nome}</div>${m.ref?`<div class="mat-ref">Ref. ${m.ref}${m.qty?' · '+m.qty:''}</div>`:''} ${m.notas?`<div class="mat-notas">${m.notas}</div>`:''}`;
+    el.appendChild(card);
+  });
+}
+
+/* ── Aprovação ── */
+function setupAprovacao(){
+  if(!S.aprovacao) return;
+  const w=document.getElementById('aprov-wrap');
+  w.classList.add('aprov-done');
+  w.innerHTML=`<div class="aprov-icon">✅</div><div class="aprov-title">Projecto <em>aprovado</em></div><div class="aprov-ts">${new Date(S.aprovacao).toLocaleString('pt-PT')}</div>`;
+}
+
+window.confirmarAprovacao=async()=>{
+  const btn=document.getElementById('btn-aprov');
+  btn.disabled=true; btn.textContent='A guardar…';
+  const ts=new Date().toISOString();
+  try {
+    await updateDoc(doc(db,'obras',obraId),{aprovacao:ts,estado:'concluido'});
+    S.aprovacao=ts; setupAprovacao();
+    const b=document.getElementById('h-badge');
+    b.textContent='Aprovado'; b.className='h-badge concluido';
+    toast('Projecto aprovado ✓','ok');
+  } catch(e){btn.disabled=false;btn.textContent='Aprovar projecto';toast('Erro: '+e.message,'err');}
+};
+
+/* ── Toast ── */
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+(type||'');clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2500);}
+</script>
+</body>
+</html>
