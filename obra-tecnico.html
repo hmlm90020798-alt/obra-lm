@@ -371,7 +371,8 @@ function buildSlides() {
 
     const iw = document.createElement('div');
     // Aplicar classe planta/foto para controlar o filtro CSS
-    iw.className = 'img-wrap ' + (a.tipo==='foto' ? 'foto' : 'planta');
+    // Só aplica filtro dark se tipo='planta' explicitamente — default é sem filtro
+    iw.className = 'img-wrap ' + (a.tipo==='planta' ? 'planta' : 'foto');
     iw.id = 'iw-'+i;
 
     if (a.img) {
