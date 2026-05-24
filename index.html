@@ -1481,18 +1481,31 @@ window.deleteMat = id => {
 
 // ─── SHARE LINKS ───────────────────────────────
 function updateShareLinks() {
-  const base = location.origin + location.pathname.replace('obra-editor.html','');
+  const base = getBaseUrl();
   document.getElementById('share-tec').textContent = `${base}obra-tecnico.html?obra=${S.obraId}`;
   document.getElementById('share-cli').textContent = `${base}obra-cliente.html?obra=${S.obraId}`;
 }
 window.copyViewerLink = tipo => {
-  const base = location.origin + location.pathname.replace('obra-editor.html','');
+  const base = getBaseUrl();
   const url  = tipo==='tecnico'
     ? `${base}obra-tecnico.html?obra=${S.obraId}`
     : `${base}obra-cliente.html?obra=${S.obraId}`;
   navigator.clipboard.writeText(url).then(()=>toast('Link copiado ✓','ok'));
 };
 window.copyText = (txt,msg) => navigator.clipboard.writeText(txt).then(()=>toast(msg,'ok'));
+
+// ─── BASE URL ──────────────────────────────────
+function getBaseUrl() {
+  // Garante que a base termina em / e aponta para a pasta correcta
+  const path = location.pathname
+    .replace(/index\.html$/, '')
+    .replace(/obra-editor\.html$/, '');
+  // Em file:// usar só o pathname; em http(s):// usar origin + pathname
+  if (location.protocol === 'file:') {
+    return location.origin + path;
+  }
+  return location.origin + path;
+}
 
 // ─── TOAST ─────────────────────────────────────
 function toast(msg,type='') {
