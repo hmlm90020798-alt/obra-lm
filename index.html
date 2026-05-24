@@ -873,6 +873,8 @@ window.loadOrCreate = async () => {
       S.materiais = d.materiais || [];
       S.biblioteca= d.biblioteca|| [];
       S.tiposCustom= d.tiposCustom || [];
+      // Carregar imagens dos documentos separados
+      await carregarImagens();
       document.getElementById('obra-nome').value  = d.nome   || '';
       document.getElementById('obra-morada').value= d.morada || '';
       document.getElementById('obra-notas').value = d.notas  || '';
@@ -891,25 +893,59 @@ window.loadOrCreate = async () => {
   } catch(e) { toast('Erro: '+e.message,'err'); }
 };
 
+// ─── CARREGAR IMAGENS ──────────────────────────
+async function carregarImagens() {
+  const promises = S.alcados.map(async a => {
+    try {
+      const snap = await getDoc(doc(db, 'obras_imagens', `${S.obraId}_${a.key}`));
+      if (snap.exists()) {
+        const d = snap.data();
+        a.img        = d.img;
+        a.imgRotated = d.img; // já está rotada
+      }
+    } catch(_) {}
+  });
+  await Promise.all(promises);
+}
+
 // ─── SAVE ──────────────────────────────────────
 window.saveObra = async () => {
   if (!S.obraId) return toast('Carrega uma obra primeiro','err');
   try {
+    // Guardar imagens em documentos separados (evitar limite 1MB Firestore)
+    const alcadosSemImg = S.alcados.map(a => ({
+      key: a.key, nome: a.nome,
+      rotation: a.rotation || 0,
+      rotacaoConfirmada: a.rotacaoConfirmada || false,
+      temImg: !!(a.img || a.imgRotated),
+    }));
+    const imgPromises = S.alcados.map(a => {
+      const imgData = a.imgRotated || a.img || null;
+      if (!imgData) return Promise.resolve();
+      return setDoc(doc(db, 'obras_imagens', `${S.obraId}_${a.key}`), {
+        obraId: S.obraId, key: a.key, img: imgData,
+      }, { merge: true });
+    });
+    await Promise.all(imgPromises);
+
+    // Documento principal sem imagens
     await setDoc(doc(db,'obras',S.obraId), {
       id: S.obraId,
       nome:    document.getElementById('obra-nome').value.trim()   || S.obraId,
       morada:  document.getElementById('obra-morada').value.trim() || '',
       notas:   document.getElementById('obra-notas').value.trim()  || '',
-      alcados:  S.alcados,
+      alcados:   alcadosSemImg,
       hotspots:  S.hotspots,
       materiais: S.materiais,
       biblioteca: S.biblioteca,
       tiposCustom:S.tiposCustom,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
+
     const ind = document.getElementById('saved-ind');
     ind.classList.add('show');
     setTimeout(()=>ind.classList.remove('show'),2500);
+    toast('Guardado ✓','ok');
   } catch(e) { toast('Erro: '+e.message,'err'); }
 };
 

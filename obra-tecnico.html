@@ -406,7 +406,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 
 <script type="module">
 import { initializeApp }  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, updateDoc }
+import { getFirestore, doc, getDoc, getDocs, collection, updateDoc }
                           from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FB = {
@@ -502,6 +502,16 @@ async function loadObra() {
     S.matCheck    = d.matCheck   || {};
     S.ocorrencias = d.ocorrencias_tecnico || [];
     S.conclusao   = d.conclusao  || null;
+
+    // Carregar imagens dos documentos separados
+    const imgPromises = S.alcados.map(async a => {
+      if (!a.temImg) return;
+      try {
+        const iSnap = await getDoc(doc(db, 'obras_imagens', `${S.obraId}_${a.key}`));
+        if (iSnap.exists()) a.img = iSnap.data().img;
+      } catch(_) {}
+    });
+    await Promise.all(imgPromises);
 
     document.getElementById('h-title').textContent = d.nome || S.obraId;
     document.getElementById('h-sub').textContent   = d.morada || 'Ficha de Obra · Técnico';
