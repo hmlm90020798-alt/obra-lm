@@ -23,8 +23,8 @@
   --purple-dim:rgba(157,125,234,.12);
   --red:       #f05252;
   --text:      #d8dce8;
-  --text2:     #7a8099;
-  --text3:     #3d4259;
+  --text2:     #9ca3b4;
+  --text3:     #5a6380;
   --mono:      'DM Mono', monospace;
   --serif:     'Fraunces', serif;
   --sans:      'Instrument Sans', sans-serif;
@@ -97,7 +97,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .topbar-logo b { color: var(--accent); font-weight: 500; }
 .topbar-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
 .topbar-obra {
-  font-family: var(--mono); font-size: .75rem; color: var(--text2);
+  font-family: var(--mono); font-size: .75rem; color: #9ca3b4;
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .topbar-obra b { color: var(--text); }
@@ -117,7 +117,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 }
 .btn-primary   { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: #3d6aff; }
-.btn-secondary { background: var(--raised); color: var(--text2); border: 1px solid var(--border); }
+.btn-secondary { background: var(--raised); color: #b0b8cc; border: 1px solid var(--border); }
 .btn-secondary:hover { color: var(--text); border-color: var(--border2); }
 .btn-ghost     { background: transparent; color: var(--text2); }
 .btn-ghost:hover { color: var(--text); background: var(--raised); }
@@ -144,22 +144,23 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 }
 .panel-tab {
   flex: 1; padding: .6rem .4rem; border: none; background: transparent;
-  color: var(--text3); font-family: var(--mono); font-size: .6rem;
+  color: #8892a4; font-family: var(--mono); font-size: .6rem;
   letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
   border-bottom: 2px solid transparent; transition: all .15s; margin-bottom: -1px;
 }
+.panel-tab:hover { color: var(--text); }
 .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .panel-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
 .panel-section { padding: .75rem; border-bottom: 1px solid var(--border); }
 .panel-label {
   font-family: var(--mono); font-size: .6rem; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--text3); margin-bottom: .6rem;
+  text-transform: uppercase; color: #8892a4; margin-bottom: .6rem;
   display: flex; align-items: center; justify-content: space-between;
 }
 
 /* OBRA FORM */
 .field { margin-bottom: .65rem; }
-.field label { display: block; font-size: .68rem; font-family: var(--mono); color: var(--text3); margin-bottom: .3rem; }
+.field label { display: block; font-size: .68rem; font-family: var(--mono); color: #8892a4; margin-bottom: .3rem; }
 .field input, .field textarea, .field select {
   width: 100%; background: var(--bg); border: 1px solid var(--border);
   color: var(--text); font-family: var(--mono); font-size: .78rem;
@@ -239,7 +240,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .mode-btn { padding: .3rem .7rem; background: transparent; border: none; color: var(--text3); font-size: .7rem; font-family: var(--mono); cursor: pointer; transition: all .15s; }
 .mode-btn.active { background: var(--accent); color: #fff; }
 .coord-pill { font-family: var(--mono); font-size: .65rem; color: var(--text3); padding: .25rem .55rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
-.canvas-hint { font-size: .72rem; color: var(--text3); margin-left: .25rem; }
+.canvas-hint { font-size: .72rem; color: #8892a4; margin-left: .25rem; }
 
 /* UPLOAD ZONE */
 .upload-zone {
