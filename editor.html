@@ -390,6 +390,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     <div class="modal-title">Novo <em>Alçado</em></div>
     <div class="field"><label>Nome</label><input type="text" id="alc-nome" placeholder="ex: Alçado A — Lava-loiça"></div>
     <div class="field"><label>Key (sem espaços)</label><input type="text" id="alc-key" placeholder="ex: alcado_a"></div>
+    <div class="field"><label>Tipo de imagem</label><select id="alc-tipo"><option value="planta">Planta CAD (filtro dark)</option><option value="foto">Foto / Render (cor natural)</option></select></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-alcado')">Cancelar</button>
       <button class="btn btn-primary" onclick="addAlcado()">Adicionar</button>
@@ -639,7 +640,8 @@ window.addAlcado = () => {
   const key  = document.getElementById('alc-key').value.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
   if (!nome||!key) return toast('Preenche nome e key','err');
   if (S.alcados.find(a=>a.key===key)) return toast('Key já existe','err');
-  S.alcados.push({ key, nome, temImg:false, rotation:0, rotacaoConfirmada:false });
+  const tipo = document.getElementById('alc-tipo').value;
+  S.alcados.push({ key, nome, tipo, temImg:false, rotation:0, rotacaoConfirmada:false });
   S.hotspots[key] = [];
   closeModal('modal-alcado');
   document.getElementById('alc-nome').value='';
