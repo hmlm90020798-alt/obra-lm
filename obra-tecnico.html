@@ -822,9 +822,9 @@ function togglePopup(h, pinWrap, slideIdx) {
   if (S.activePopup && S.activePopup.id === h.id) { closePopup(); return; }
   closePopup();
 
-  // Marcar pin activo
-  document.querySelectorAll('.hs-pin').forEach(p=>p.classList.remove('active'));
-  pinWrap.querySelector('.hs-pin').classList.add('active');
+  // Marcar pin activo — pins são SVG
+  document.querySelectorAll('.hs-pin-wrap').forEach(w=>w.classList.remove('active'));
+  pinWrap.classList.add('active');
 
   const popup = document.createElement('div');
   popup.className = 'hs-popup';
