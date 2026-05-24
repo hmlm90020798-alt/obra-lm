@@ -269,6 +269,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .hs-marker svg { transition: transform .15s, filter .15s; cursor: pointer; display: block; }
 .hs-marker svg:hover { transform: scale(1.2); filter: drop-shadow(0 0 4px rgba(255,255,255,.2)); }
 .hs-marker svg.active { transform: scale(1.25); filter: drop-shadow(0 0 6px rgba(255,255,255,.3)); }
+.pin-size-opt {
+  flex: 1; padding: .35rem; border: 1px solid var(--border); border-radius: 4px;
+  text-align: center; font-size: .7rem; font-family: var(--mono);
+  cursor: pointer; transition: all .15s; color: var(--text3);
+}
+.pin-size-opt.sel {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-dim);
+}
 .tipo-custom-opt {
   padding: .35rem .55rem; border: 1px solid var(--border); border-radius: 4px;
   font-size: .68rem; cursor: pointer; transition: all .15s;
@@ -548,6 +556,15 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
         <div class="field">
           <label>Cota / Medida</label>
           <input type="text" id="hs-cota" placeholder="ex: 266cm da parede esq.">
+        </div>
+        <div class="field">
+          <label>Tamanho do pin</label>
+          <div style="display:flex;gap:.4rem">
+            <div class="pin-size-opt" data-size="s" onclick="selPinSize('s')" title="Pequeno">S</div>
+            <div class="pin-size-opt sel" data-size="m" onclick="selPinSize('m')" title="Normal">M</div>
+            <div class="pin-size-opt" data-size="l" onclick="selPinSize('l')" title="Grande">L</div>
+            <div class="pin-size-opt" data-size="xl" onclick="selPinSize('xl')" title="Extra grande">XL</div>
+          </div>
         </div>
         <div class="field">
           <label>Informação técnica</label>
@@ -1123,10 +1140,20 @@ function openRp(editMode) {
   if (!editMode) { const cb=document.getElementById('hs-add-biblio'); if(cb) cb.checked=false; }
   initPaleta();
   renderTipoGrid();
+  // Reset tamanho se novo hotspot
+  if (!editMode) selPinSize('m');
 }
 window.closeRp = () => { document.getElementById('right-panel').classList.remove('open'); S.pendingXY=null; S.editHsId=null; };
 
-let currentTipo='tomada';
+let currentTipo  = 'tomada';
+let currentPinSize = 'm';  // s | m | l | xl
+
+window.selPinSize = size => {
+  currentPinSize = size;
+  document.querySelectorAll('.pin-size-opt').forEach(el => {
+    el.classList.toggle('sel', el.dataset.size === size);
+  });
+};
 window.selTipo = t => {
   currentTipo = t;
   renderTipoGrid();
@@ -1144,7 +1171,7 @@ window.saveHs = () => {
   if (!S.hotspots[key]) S.hotspots[key]=[];
   if (S.editHsId) {
     const h=S.hotspots[key].find(h=>h.id===S.editHsId);
-    if(h) Object.assign(h,{label,cota,tec,cli,tipo:currentTipo});
+    if(h) Object.assign(h,{label,cota,tec,cli,tipo:currentTipo,pinSize:currentPinSize});
     // Actualizar na biblioteca se existir
     const bh=S.biblioteca.find(b=>b.id===h?.bibId);
     if(bh) Object.assign(bh,{label,tec,cli,tipo:currentTipo});
@@ -1157,7 +1184,7 @@ window.saveHs = () => {
       S.biblioteca.push({id:bibId, tipo:currentTipo, label, tec, cli});
       renderBiblioList();
     }
-    S.hotspots[key].push({id, x:S.pendingXY.x, y:S.pendingXY.y, tipo:currentTipo, label, cota, tec, cli, bibId});
+    S.hotspots[key].push({id, x:S.pendingXY.x, y:S.pendingXY.y, tipo:currentTipo, pinSize:currentPinSize, label, cota, tec, cli, bibId});
   }
   closeRp(); renderHsList(); renderMarkers(); renderAlcados();
   toast(addBib?'Guardado + adicionado à biblioteca':'Hotspot guardado','ok');
@@ -1186,6 +1213,7 @@ window.editHs = id => {
   document.getElementById('hs-cota').value=h.cota||'';
   document.getElementById('hs-tec').value=h.tec||'';
   document.getElementById('hs-cli').value=h.cli||'';
+  selPinSize(h.pinSize||'m');
   document.getElementById('rp-coords').textContent=`x: ${h.x}%  ·  y: ${h.y}%`;
   document.getElementById('rp-title').textContent='Editar Hotspot';
   selTipo(h.tipo||'tomada');
@@ -1200,12 +1228,15 @@ window.deleteHs = (id,e) => {
 };
 
 // ─── MARKERS ───────────────────────────────────
-function calcPinSize() {
+const PIN_SCALE = { s: .025, m: .038, l: .055, xl: .075 };
+const PIN_MIN   = { s: 16,   m: 24,   l: 32,   xl: 44  };
+const PIN_MAX   = { s: 28,   m: 40,   l: 56,   xl: 72  };
+
+function calcPinSize(sizeKey) {
   const img = document.getElementById('alcado-img');
-  if (!img || !img.naturalWidth) return 28;
-  const w = img.getBoundingClientRect().width;
-  // Pin = 3.5% da largura da imagem renderizada, entre 20px e 42px
-  return Math.min(42, Math.max(20, Math.round(w * 0.035)));
+  const w   = img ? img.getBoundingClientRect().width : 600;
+  const k   = sizeKey || 'm';
+  return Math.min(PIN_MAX[k], Math.max(PIN_MIN[k], Math.round(w * PIN_SCALE[k])));
 }
 
 function renderMarkers() {
@@ -1213,12 +1244,12 @@ function renderMarkers() {
   wrap.querySelectorAll('.hs-marker').forEach(el=>el.remove());
   const hss  = S.activeKey ? (S.hotspots[S.activeKey]||[]) : [];
   let eqCount = 0;
-  const pinSize = calcPinSize();
 
   hss.forEach((h, i) => {
     const isEquip = h.tipo==='equipamento';
     if (isEquip) eqCount++;
-    const label = isEquip ? String(eqCount) : String(i+1);
+    const label   = isEquip ? String(eqCount) : String(i+1);
+    const pinSize = calcPinSize(h.pinSize || 'm');
 
     const marker = document.createElement('div');
     marker.className = 'hs-marker';

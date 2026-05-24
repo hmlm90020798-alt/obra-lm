@@ -587,12 +587,15 @@ function buildSlides() {
   updateNav();
 }
 
-function calcPinSize(idx) {
+const PIN_SCALE = { s: .028, m: .045, l: .065, xl: .09  };
+const PIN_MIN   = { s: 20,   m: 32,   l: 40,   xl: 52  };
+const PIN_MAX   = { s: 32,   m: 48,   l: 64,   xl: 80  };
+
+function calcPinSize(idx, sizeKey) {
   const img = document.querySelector(`#inner-${idx} img`);
-  if (!img) return 36;
-  const w = img.getBoundingClientRect().width;
-  // Técnico: pins maiores para toque fácil em obra (mín 32px, máx 52px)
-  return Math.min(52, Math.max(32, Math.round(w * 0.05)));
+  const w   = img ? img.getBoundingClientRect().width : 400;
+  const k   = sizeKey || 'm';
+  return Math.min(PIN_MAX[k], Math.max(PIN_MIN[k], Math.round(w * PIN_SCALE[k])));
 }
 
 function getImgRect(idx) {
@@ -616,17 +619,16 @@ function renderPins(idx) {
 
   const key     = S.alcados[idx]?.key;
   const hss     = key ? (S.hotspots[key]||[]) : [];
-  const pinSize = calcPinSize(idx);
-  let eqCount   = 0;
+  let eqCount = 0;
 
   hss.forEach((h, i) => {
     const isEquip = h.tipo==='equipamento';
     if (isEquip) eqCount++;
-    const label = isEquip ? String(eqCount) : String(i+1);
+    const label   = isEquip ? String(eqCount) : String(i+1);
+    const pinSize = calcPinSize(idx, h.pinSize || 'm');
 
     const wrap = document.createElement('div');
     wrap.className  = 'hs-pin-wrap';
-    // Posicionar em % da imagem — não do container
     wrap.style.left = h.x+'%';
     wrap.style.top  = h.y+'%';
     wrap.innerHTML  = pinSVG(h.tipo, label, pinSize);
