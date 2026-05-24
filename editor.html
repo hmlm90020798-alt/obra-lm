@@ -175,10 +175,24 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .rp-body { flex: 1; overflow-y: auto; padding: .65rem .85rem; display: flex; flex-direction: column; gap: .5rem; }
 
 /* Tipo grid */
-.tipo-section-label { font-size: .55rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--text3); padding: .15rem 0 .05rem; }
-.tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .28rem; }
-.tipo-btn { display: flex; align-items: center; gap: .3rem; padding: .25rem .4rem; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all .15s; font-size: .62rem; color: var(--text3); background: transparent; white-space: nowrap; overflow: hidden; }
-.tipo-btn.on { opacity: 1; }
+.tipo-select-wrap { position: relative; }
+.tipo-select {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: .78rem;
+  padding: .42rem 2rem .42rem .65rem; border-radius: 4px; outline: none;
+  cursor: pointer; appearance: none; transition: border-color .15s;
+}
+.tipo-select:focus { border-color: var(--accent); }
+.tipo-select-icon {
+  position: absolute; right: .65rem; top: 50%; transform: translateY(-50%);
+  pointer-events: none; font-size: .9rem;
+}
+.tipo-preview {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .3rem .5rem; background: var(--raised); border-radius: 4px;
+  border: 1px solid var(--border); margin-top: .3rem;
+}
+.tipo-preview-label { font-size: .72rem; color: var(--text2); }
 
 /* Pin size */
 .size-row { display: flex; gap: .28rem; }
@@ -351,9 +365,15 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     <button class="rp-close" onclick="closeRp()">✕</button>
   </div>
   <div class="rp-body">
-    <!-- Tipos built-in -->
-    <div>
-      <div id="tipo-grid"></div>
+    <!-- Tipo -->
+    <div class="field">
+      <label>Tipo</label>
+      <div class="tipo-select-wrap">
+        <select class="tipo-select" id="tipo-select" onchange="selTipoDropdown(this.value)">
+        </select>
+        <span class="tipo-select-icon" id="tipo-select-icon">●</span>
+      </div>
+      <div class="tipo-preview" id="tipo-preview"></div>
     </div>
     <!-- Tamanho -->
     <div>
@@ -834,48 +854,49 @@ window.closeRp = () => {
   S.selHsId=null;
 };
 
-/* ── Tipo grid ─── */
+/* ── Tipo dropdown ─── */
 function renderTipoGrid() {
-  const el = document.getElementById('tipo-grid');
-  el.innerHTML='';
-  let lastGrupo = null;
-  TIPOS.forEach(t => {
-    if (t.grupo!==lastGrupo) {
-      const sep=document.createElement('div');
-      sep.className='tipo-section-label';
-      sep.textContent=GRUPOS[t.grupo]||t.grupo;
-      el.appendChild(sep);
-      // Reset grid para cada grupo
-      const grid=document.createElement('div');
-      grid.className='tipo-grid';
-      grid.id='tg-'+t.grupo;
-      el.appendChild(grid);
-      lastGrupo=t.grupo;
-    }
-    const grid=document.getElementById('tg-'+t.grupo);
-    const btn=document.createElement('div');
-    const isSel=curTipo===t.id;
-    btn.className='tipo-btn'+(isSel?' on':'');
-    btn.style.cssText=`border-color:${isSel?t.cor:'var(--border)'};color:${isSel?t.cor:'var(--text3)'};background:${isSel?t.cor+'22':'transparent'}`;
-    btn.innerHTML=pinSVG(t.id,'',14)+`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.label}</span>`;
-    btn.onclick=()=>selTipo(t.id);
-    btn.dataset.tipo=t.id;
-    grid.appendChild(btn);
+  const sel = document.getElementById('tipo-select');
+  if (!sel) return;
+  // Construir opções agrupadas
+  const allTipos = [...TIPOS, ...S.tiposCustom];
+  const grupos   = [...new Set(allTipos.map(t=>t.grupo||'custom'))];
+  sel.innerHTML  = '';
+  grupos.forEach(g => {
+    const grpLabel = GRUPOS[g] || 'Personalizados';
+    const items    = allTipos.filter(t=>(t.grupo||'custom')===g);
+    if (!items.length) return;
+    const optgrp   = document.createElement('optgroup');
+    optgrp.label   = grpLabel;
+    items.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.label;
+      if (t.id === curTipo) opt.selected = true;
+      optgrp.appendChild(opt);
+    });
+    sel.appendChild(optgrp);
   });
+  updateTipoPreview();
 }
 
-function selTipo(id) {
-  curTipo=id;
-  document.querySelectorAll('.tipo-btn').forEach(b=>{
-    const t=getTipo(b.dataset.tipo);
-    const sel=b.dataset.tipo===id;
-    b.classList.toggle('on',sel);
-    b.style.borderColor=sel?t.cor:'var(--border)';
-    b.style.color=sel?t.cor:'var(--text3)';
-    b.style.background=sel?t.cor+'22':'transparent';
-  });
+function updateTipoPreview() {
+  const t    = getTipo(curTipo);
+  const icon = document.getElementById('tipo-select-icon');
+  const prev = document.getElementById('tipo-preview');
+  if (icon) { icon.textContent = t.sim || '●'; icon.style.color = t.cor; }
+  if (prev) prev.innerHTML = pinSVG(curTipo,'',18) + `<span class="tipo-preview-label">${t.label}</span>`;
 }
-window.selTipo=selTipo;
+
+window.selTipoDropdown = id => { curTipo = id; updateTipoPreview(); };
+
+function selTipo(id) {
+  curTipo = id;
+  const sel = document.getElementById('tipo-select');
+  if (sel) sel.value = id;
+  updateTipoPreview();
+}
+window.selTipo = selTipo;
 
 function setSz(sz) {
   curSz=sz;
