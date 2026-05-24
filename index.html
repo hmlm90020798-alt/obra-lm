@@ -201,23 +201,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 <div id="toast"></div>
 
 <script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { db, auth }     from './firebase.js';
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-
-const FB = {
-  apiKey:'AIzaSyALyrpFSGx4evXtOYCfRIvWc_jTjByz0R8',
-  authDomain:'hm-projetos-lm.firebaseapp.com',
-  projectId:'hm-projetos-lm',
-  storageBucket:'hm-projetos-lm.firebasestorage.app',
-  messagingSenderId:'772658359928',
-  appId:'1:772658359928:web:98332ec006329f380ec78d',
-};
-const app = initializeApp(FB);
-const db  = getFirestore(app);
-const auth= getAuth(app);
 
 // ── AUTH ─────────────────────────────────────────
 onAuthStateChanged(auth, u => {
