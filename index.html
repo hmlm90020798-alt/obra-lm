@@ -1157,7 +1157,19 @@ window.selPinSize = size => {
 };
 window.selTipo = t => {
   currentTipo = t;
-  renderTipoGrid();
+  // Actualizar estilos sem reconstruir o DOM
+  const el = document.getElementById('tipo-grid-builtin');
+  if (el) {
+    el.querySelectorAll('[data-tipo]').forEach(btn => {
+      const tid  = btn.dataset.tipo;
+      const tipo = TIPOS_BUILTIN.find(x=>x.id===tid) || S.tiposCustom.find(x=>x.id===tid);
+      if (!tipo) return;
+      const isSel = tid === t;
+      btn.style.border     = `1px solid ${isSel ? tipo.cor : 'var(--border)'}`;
+      btn.style.background = isSel ? tipo.cor+'22' : 'transparent';
+      btn.style.color      = isSel ? tipo.cor : 'var(--text2)';
+    });
+  }
   renderTiposCustomGrid();
 };
 
