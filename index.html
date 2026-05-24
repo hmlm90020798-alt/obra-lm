@@ -1316,8 +1316,17 @@ function startDrag(ev, id) {
   document.addEventListener('mouseup',onUp);
 }
 function highlightPin(id) {
-  document.querySelectorAll('.hs-pin').forEach(p=>p.classList.remove('active'));
-  document.getElementById('mk-'+id)?.querySelector('.hs-pin').classList.add('active');
+  // Pins são agora SVG — realçar via filter no wrapper
+  document.querySelectorAll('.hs-marker').forEach(m => {
+    const svg = m.querySelector('svg');
+    if (svg) svg.style.filter = '';
+    svg && svg.style.removeProperty('transform');
+  });
+  const mk = document.getElementById('mk-'+id);
+  if (mk) {
+    const svg = mk.querySelector('svg');
+    if (svg) svg.style.filter = 'drop-shadow(0 0 5px rgba(255,255,255,.4))';
+  }
 }
 
 // ─── MATERIAIS ─────────────────────────────────
