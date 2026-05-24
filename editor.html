@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor · Caderno de Obra</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════ */
+:root {
+  --bg:      #0c0e12;
+  --surface: #111318;
+  --raised:  #161920;
+  --border:  #1d2130;
+  --border2: #252a3a;
+  --accent:  #4f7cff;
+  --adim:    rgba(79,124,255,.12);
+  --green:   #2dd898;
+  --gdim:    rgba(45,216,152,.1);
+  --amber:   #e8a234;
+  --red:     #f05252;
+  --purple:  #9d7dea;
+  --sky:     #38bdf8;
+  --text:    #d8dce8;
+  --text2:   #9ca3b4;
+  --text3:   #5a6380;
+  --mono:    'DM Mono', monospace;
+  --serif:   'Fraunces', serif;
+  --sans:    'Instrument Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ══════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════ */
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex; align-items: center; gap: .75rem;
+  padding: 0 1rem; height: 48px; flex-shrink: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  z-index: 100;
+}
+.topbar-back { color: var(--text3); text-decoration: none; font-size: .8rem; display: flex; align-items: center; gap: .3rem; transition: color .15s; }
+.topbar-back:hover { color: var(--text); }
+.topbar-divider { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+.topbar-obra { font-family: var(--mono); font-size: .72rem; color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-obra b { color: var(--text); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: .4rem; }
+.saved-pill { font-family: var(--mono); font-size: .65rem; color: var(--green); opacity: 0; transition: opacity .3s; padding: .2rem .5rem; background: var(--gdim); border-radius: 4px; }
+.saved-pill.show { opacity: 1; }
+
+/* ── WORKSPACE ── */
+.workspace { display: flex; flex: 1; overflow: hidden; }
+
+/* ── LEFT PANEL ── */
+.left { width: 256px; min-width: 256px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.panel-tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.ptab { flex: 1; padding: .55rem .25rem; border: none; background: transparent; color: var(--text3); font-family: var(--mono); font-size: .58rem; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; margin-bottom: -1px; }
+.ptab:hover { color: var(--text2); }
+.ptab.on { color: var(--accent); border-bottom-color: var(--accent); }
+.panel-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+[data-tab] { display: none; flex-direction: column; }
+[data-tab].on { display: flex; }
+
+/* Sections */
+.psec { padding: .75rem; border-bottom: 1px solid var(--border); }
+.plabel { font-family: var(--mono); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: .55rem; display: flex; align-items: center; justify-content: space-between; }
+
+/* Fields */
+.field { margin-bottom: .6rem; }
+.field:last-child { margin-bottom: 0; }
+.field label { display: block; font-size: .65rem; font-family: var(--mono); color: var(--text3); margin-bottom: .28rem; }
+.field input, .field textarea, .field select {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--mono); font-size: .78rem;
+  padding: .42rem .65rem; border-radius: 4px; outline: none; transition: border-color .15s;
+}
+.field input:focus, .field textarea:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 54px; line-height: 1.5; }
+
+/* Alcados list */
+.alcado-list { display: flex; flex-direction: column; gap: .28rem; }
+.alcado-row { display: flex; align-items: center; gap: .4rem; padding: .42rem .55rem; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; transition: all .15s; font-size: .78rem; color: var(--text); }
+.alcado-row:hover { border-color: var(--border2); background: var(--raised); }
+.alcado-row.on { border-color: var(--accent); background: var(--adim); color: var(--text); }
+.alcado-handle { color: var(--text3); cursor: grab; padding: .05rem .25rem; font-size: .9rem; opacity: .45; user-select: none; flex-shrink: 0; }
+.alcado-handle:hover { opacity: 1; }
+.alcado-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.alcado-row.on .alcado-dot { background: var(--accent); }
+.alcado-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alcado-count { font-family: var(--mono); font-size: .62rem; color: var(--text3); background: var(--raised); padding: .08rem .3rem; border-radius: 3px; flex-shrink: 0; }
+.alcado-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: .8rem; padding: .1rem .2rem; border-radius: 3px; flex-shrink: 0; transition: all .15s; }
+.alcado-del:hover { color: var(--red); }
+.alcado-row.drag-over { border-color: var(--accent); background: var(--adim); }
+.alcado-row.dragging { opacity: .35; }
+
+/* Hotspot list */
+.hs-list { flex: 1; overflow-y: auto; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .25rem; }
+.hs-item { padding: .45rem .6rem; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all .15s; }
+.hs-item:hover { border-color: var(--border2); background: var(--raised); }
+.hs-item.on { border-color: var(--amber); background: rgba(232,162,52,.06); }
+.hs-top { display: flex; align-items: center; gap: .4rem; margin-bottom: .2rem; }
+.hs-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.hs-lbl { font-size: .76rem; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hs-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: .78rem; padding: .1rem .2rem; border-radius: 3px; transition: all .15s; margin-left: auto; }
+.hs-del:hover { color: var(--red); }
+.hs-preview { font-size: .65rem; color: var(--text3); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Import buttons */
+.import-row { display: flex; gap: .3rem; padding: .5rem .65rem; flex-shrink: 0; }
+.import-btn { flex: 1; padding: .35rem .4rem; border: 1px solid var(--border); background: transparent; color: var(--text3); font-size: .65rem; font-family: var(--sans); font-weight: 600; border-radius: 4px; cursor: pointer; transition: all .15s; }
+.import-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Materiais */
+.mat-list { flex: 1; overflow-y: auto; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .25rem; }
+.mat-item { display: flex; align-items: center; gap: .4rem; padding: .42rem .55rem; border: 1px solid var(--border); border-radius: 4px; font-size: .76rem; }
+.mat-ref { font-family: var(--mono); font-size: .62rem; color: var(--text3); min-width: 52px; flex-shrink: 0; }
+.mat-nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mat-qty { font-family: var(--mono); font-size: .7rem; color: var(--accent); flex-shrink: 0; }
+.mat-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: .78rem; padding: .1rem .2rem; border-radius: 3px; transition: all .15s; }
+.mat-del:hover { color: var(--red); }
+
+/* Biblioteca */
+.bib-list { flex: 1; overflow-y: auto; padding: .5rem .65rem; display: flex; flex-direction: column; gap: .25rem; }
+
+/* ── CANVAS ── */
+.canvas { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.canvas-bar { display: flex; align-items: center; gap: .6rem; padding: .45rem .85rem; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.mode-sw { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+.mode-btn { padding: .28rem .65rem; background: transparent; border: none; color: var(--text3); font-size: .68rem; font-family: var(--mono); cursor: pointer; transition: all .15s; }
+.mode-btn.on { background: var(--accent); color: #fff; }
+.coord-pill { font-family: var(--mono); font-size: .62rem; color: var(--text3); padding: .22rem .5rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
+.canvas-hint { font-size: .7rem; color: var(--text3); }
+.rot-actions { margin-left: auto; display: flex; gap: .3rem; align-items: center; }
+.rot-btn { padding: .28rem .55rem; border-radius: 4px; border: 1px solid var(--border); background: var(--raised); color: var(--text2); font-size: .8rem; cursor: pointer; transition: all .15s; }
+.rot-btn:hover { border-color: var(--accent); color: var(--accent); }
+.rot-confirm { padding: .28rem .65rem; border-radius: 4px; border: none; background: var(--green); color: #000; font-size: .68rem; font-family: var(--sans); font-weight: 700; cursor: pointer; transition: opacity .15s; display: none; }
+.rot-confirm:hover { opacity: .85; }
+
+/* Stage */
+.stage { flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 1.25rem; background: #080a0e; }
+.img-wrap { position: relative; display: inline-block; line-height: 0; user-select: none; }
+.img-wrap img { display: block; max-width: 100%; border-radius: 3px; border: 1px solid var(--border); }
+.img-wrap.placing { cursor: crosshair; }
+
+/* Upload zone */
+.upload-zone { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .65rem; border: 1px dashed var(--border2); margin: 1.25rem; border-radius: 8px; cursor: pointer; transition: all .2s; color: var(--text3); }
+.upload-zone:hover { border-color: var(--accent); color: var(--accent); }
+.upload-zone p { font-size: .82rem; }
+.upload-zone small { font-size: .68rem; font-family: var(--mono); }
+.upload-pulse { font-family: var(--mono); font-size: .72rem; color: var(--accent); animation: pulse 1s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.35} }
+
+/* Markers */
+.mk { position: absolute; transform: translate(-50%,-50%); z-index: 10; }
+.mk svg { display: block; cursor: grab; transition: transform .15s, filter .15s; filter: drop-shadow(0 2px 5px rgba(0,0,0,.7)); }
+.mk svg:hover { transform: scale(1.18); filter: drop-shadow(0 2px 5px rgba(0,0,0,.7)) drop-shadow(0 0 6px rgba(255,255,255,.2)); }
+.mk.on svg { transform: scale(1.22); filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
+
+/* ── RIGHT PANEL ── */
+.right { width: 0; min-width: 0; overflow: hidden; background: var(--surface); border-left: 1px solid var(--border); transition: width .2s ease; flex-shrink: 0; display: flex; flex-direction: column; }
+.right.open { width: 272px; min-width: 272px; }
+.rp-head { display: flex; align-items: center; padding: .7rem .9rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.rp-title { font-size: .8rem; font-weight: 600; flex: 1; }
+.rp-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 1rem; padding: .15rem; transition: color .15s; }
+.rp-close:hover { color: var(--text); }
+.rp-body { flex: 1; overflow-y: auto; padding: .85rem; display: flex; flex-direction: column; gap: .7rem; }
+
+/* Tipo grid */
+.tipo-section-label { font-size: .6rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--text3); padding: .2rem 0; }
+.tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .28rem; }
+.tipo-btn { display: flex; align-items: center; gap: .38rem; padding: .32rem .5rem; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all .15s; font-size: .68rem; color: var(--text3); background: transparent; }
+.tipo-btn.on { opacity: 1; }
+
+/* Pin size */
+.size-row { display: flex; gap: .28rem; }
+.size-btn { flex: 1; padding: .32rem; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-size: .68rem; font-family: var(--mono); color: var(--text3); cursor: pointer; transition: all .15s; }
+.size-btn.on { border-color: var(--accent); color: var(--accent); background: var(--adim); }
+
+/* Biblio checkbox */
+.bib-check { display: flex; align-items: center; gap: .45rem; font-size: .7rem; color: var(--text2); cursor: pointer; }
+.bib-check input { accent-color: var(--accent); }
+
+/* Coords */
+.rp-coords { font-family: var(--mono); font-size: .62rem; color: var(--text3); text-align: center; }
+
+/* ── BUTTONS ── */
+.btn { padding: .42rem .85rem; border-radius: 4px; border: none; font-family: var(--sans); font-size: .76rem; font-weight: 600; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: .35rem; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #3d6aff; }
+.btn-secondary { background: var(--raised); color: var(--text2); border: 1px solid var(--border); }
+.btn-secondary:hover { color: var(--text); border-color: var(--border2); }
+.btn-ghost { background: transparent; color: var(--text2); }
+.btn-ghost:hover { color: var(--text); background: var(--raised); }
+.btn-success { background: var(--green); color: #000; font-weight: 700; }
+.btn-success:hover { opacity: .85; }
+.btn-sm { padding: .28rem .6rem; font-size: .7rem; }
+.btn-icon { padding: .28rem .45rem; }
+.btn-row { display: flex; gap: .4rem; }
+.btn-row .btn { flex: 1; justify-content: center; }
+.btn-add { width: 100%; padding: .38rem; border: 1px dashed var(--border); background: transparent; color: var(--text3); font-size: .72rem; border-radius: 4px; cursor: pointer; transition: all .15s; font-family: var(--sans); }
+.btn-add:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── MODALS ── */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 300; align-items: center; justify-content: center; padding: 1rem; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; padding: 1.35rem; width: 100%; max-width: 380px; }
+.modal-title { font-family: var(--serif); font-size: 1.05rem; font-weight: 300; margin-bottom: 1.1rem; }
+.modal-title em { font-style: italic; color: var(--accent); }
+.modal-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: .25rem; margin-bottom: .75rem; }
+.modal-check-item { display: flex; align-items: center; gap: .5rem; padding: .38rem .55rem; border: 1px solid var(--border); border-radius: 4px; font-size: .76rem; cursor: pointer; }
+.modal-actions { display: flex; gap: .4rem; justify-content: flex-end; }
+
+/* ── EMPTY ── */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.75rem 1rem; color: var(--text3); font-size: .76rem; text-align: center; gap: .4rem; }
+.empty-ico { font-size: 1.6rem; opacity: .2; }
+
+/* ── SHARE BOX ── */
+.share-box { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: .55rem .7rem; font-family: var(--mono); font-size: .68rem; color: var(--text2); word-break: break-all; cursor: pointer; transition: border-color .15s; margin-bottom: .3rem; }
+.share-box:hover { border-color: var(--accent); }
+.share-hint { font-size: .62rem; color: var(--text3); font-family: var(--mono); }
+
+/* ── TOAST ── */
+#toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%) translateY(.5rem); background: var(--raised); border: 1px solid var(--border2); color: var(--text); padding: .45rem 1rem; border-radius: 5px; font-size: .72rem; font-family: var(--mono); opacity: 0; pointer-events: none; transition: all .2s; z-index: 999; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.ok  { border-color: var(--green); color: var(--green); }
+#toast.err { border-color: var(--red);   color: var(--red); }
+
+#file-input { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a class="topbar-back" href="index.html">← Obras</a>
+  <div class="topbar-divider"></div>
+  <span class="topbar-obra" id="tb-obra">A carregar…</span>
+  <div class="topbar-right">
+    <span class="saved-pill" id="saved-pill">✓ guardado</span>
+    <button class="btn btn-secondary btn-sm" onclick="openModal('modal-share')">🔗 Partilhar</button>
+    <button class="btn btn-success btn-sm" onclick="guardar()">Guardar</button>
+  </div>
+</div>
+
+<div class="workspace">
+
+<!-- ── LEFT ── -->
+<div class="left">
+  <div class="panel-tabs">
+    <button class="ptab on"  data-for="tab-obra"      onclick="ptab('tab-obra')">Obra</button>
+    <button class="ptab"     data-for="tab-alcados"   onclick="ptab('tab-alcados')">Alçados</button>
+    <button class="ptab"     data-for="tab-materiais" onclick="ptab('tab-materiais')">Mat.</button>
+    <button class="ptab"     data-for="tab-biblio"    onclick="ptab('tab-biblio')">Biblio.</button>
+  </div>
+  <div class="panel-body">
+
+    <!-- TAB OBRA -->
+    <div data-tab="tab-obra" class="on">
+      <div class="psec">
+        <div class="plabel">Identificação</div>
+        <div class="field"><label>Nome / Cliente</label><input type="text" id="f-nome" placeholder="ex: João Silva"></div>
+        <div class="field"><label>Morada</label><input type="text" id="f-morada"></div>
+        <div class="field"><label>Notas</label><textarea id="f-notas" rows="3"></textarea></div>
+      </div>
+      <div class="psec" id="links-sec" style="display:none">
+        <div class="plabel">Links de acesso</div>
+        <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:.3rem" onclick="copyLink('tecnico')">📋 Copiar link Técnico</button>
+        <button class="btn btn-secondary btn-sm" style="width:100%" onclick="copyLink('cliente')">📋 Copiar link Cliente</button>
+      </div>
+    </div>
+
+    <!-- TAB ALÇADOS -->
+    <div data-tab="tab-alcados">
+      <div class="psec">
+        <div class="plabel">Alçados <button class="btn btn-ghost btn-icon btn-sm" onclick="openModal('modal-alcado')">＋</button></div>
+        <div class="alcado-list" id="alcado-list"><div class="empty"><div class="empty-ico">📐</div>Sem alçados</div></div>
+      </div>
+      <div class="import-row">
+        <button class="import-btn" onclick="openModal('modal-importar')">↙ De alçado</button>
+        <button class="import-btn" onclick="openModal('modal-bib-pick')">☆ Da biblioteca</button>
+      </div>
+      <div class="hs-list" id="hs-list"><div class="empty"><div class="empty-ico">○</div>Selecciona um alçado</div></div>
+    </div>
+
+    <!-- TAB MATERIAIS -->
+    <div data-tab="tab-materiais">
+      <div class="psec">
+        <div class="plabel">Artigos LM <button class="btn btn-ghost btn-icon btn-sm" onclick="openModal('modal-material')">＋</button></div>
+      </div>
+      <div class="mat-list" id="mat-list"><div class="empty"><div class="empty-ico">📦</div>Sem materiais</div></div>
+    </div>
+
+    <!-- TAB BIBLIOTECA -->
+    <div data-tab="tab-biblio">
+      <div class="psec">
+        <div class="plabel">Hotspots reutilizáveis</div>
+        <p style="font-size:.68rem;color:var(--text3);line-height:1.5">Guardados aqui ficam disponíveis em todos os alçados desta obra.</p>
+      </div>
+      <div class="bib-list" id="bib-list"><div class="empty"><div class="empty-ico">☆</div>Biblioteca vazia</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── CANVAS ── -->
+<div class="canvas">
+  <div class="canvas-bar">
+    <div class="mode-sw">
+      <button class="mode-btn on" id="btn-ver"     onclick="setMode('ver')">VER</button>
+      <button class="mode-btn"    id="btn-colocar" onclick="setMode('colocar')">COLOCAR</button>
+    </div>
+    <span class="coord-pill" id="coord-pill">—</span>
+    <span class="canvas-hint" id="canvas-hint"></span>
+    <div class="rot-actions">
+      <button class="rot-btn" onclick="rodar(-90)" title="Rodar ←">↺</button>
+      <button class="rot-btn" onclick="rodar(90)"  title="Rodar →">↻</button>
+      <button class="rot-confirm" id="btn-rot-confirm" onclick="confirmarRotacao()">✓ Confirmar rotação</button>
+    </div>
+  </div>
+
+  <div class="upload-zone" id="upload-zone" onclick="triggerUpload()">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+    <p>Clica para fazer upload do alçado</p>
+    <small>JPG / PNG · máx 8MB</small>
+    <div class="upload-pulse" id="up-pulse" style="display:none">A processar…</div>
+  </div>
+
+  <div class="stage" id="stage" style="display:none">
+    <div class="img-wrap" id="img-wrap">
+      <img id="alcado-img" src="" alt="">
+    </div>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*" onchange="handleUpload(event)">
+</div>
+
+<!-- ── RIGHT PANEL ── -->
+<div class="right" id="right">
+  <div class="rp-head">
+    <span class="rp-title" id="rp-title">Novo Hotspot</span>
+    <button class="rp-close" onclick="closeRp()">✕</button>
+  </div>
+  <div class="rp-body">
+    <!-- Tipos built-in -->
+    <div>
+      <div id="tipo-grid"></div>
+    </div>
+    <!-- Tamanho -->
+    <div>
+      <div class="plabel" style="margin-bottom:.4rem">Tamanho</div>
+      <div class="size-row">
+        <div class="size-btn" data-sz="s"  onclick="setSz('s')">S</div>
+        <div class="size-btn on" data-sz="m" onclick="setSz('m')">M</div>
+        <div class="size-btn" data-sz="l"  onclick="setSz('l')">L</div>
+        <div class="size-btn" data-sz="xl" onclick="setSz('xl')">XL</div>
+      </div>
+    </div>
+    <!-- Campos -->
+    <div class="field"><label>Label</label><input type="text" id="hs-label" placeholder="ex: Tomada Placa Indução"></div>
+    <div class="field"><label>Cota / Medida</label><input type="text" id="hs-cota" placeholder="ex: 266cm da parede esq."></div>
+    <div class="field"><label>Info técnica</label><textarea id="hs-tec" rows="3" placeholder="Amperagem, instalação, notas…"></textarea></div>
+    <div class="field"><label>Info cliente</label><textarea id="hs-cli" rows="2" placeholder="Descrição para o cliente…"></textarea></div>
+    <div class="rp-coords" id="rp-coords"></div>
+    <label class="bib-check" id="bib-check-row"><input type="checkbox" id="hs-bib"> Guardar também na biblioteca</label>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveHs()">Guardar</button>
+      <button class="btn btn-secondary" onclick="closeRp()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /workspace -->
+</div><!-- /app -->
+
+<!-- MODALS -->
+
+<!-- Alçado -->
+<div class="modal-bg" id="modal-alcado">
+  <div class="modal">
+    <div class="modal-title">Novo <em>Alçado</em></div>
+    <div class="field"><label>Nome</label><input type="text" id="alc-nome" placeholder="ex: Alçado A — Lava-loiça"></div>
+    <div class="field"><label>Key (sem espaços)</label><input type="text" id="alc-key" placeholder="ex: alcado_a"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-alcado')">Cancelar</button>
+      <button class="btn btn-primary" onclick="addAlcado()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Material -->
+<div class="modal-bg" id="modal-material">
+  <div class="modal">
+    <div class="modal-title">Artigo <em>LM</em></div>
+    <div class="field"><label>Referência LM</label><input type="text" id="mat-ref" placeholder="ex: 123456789"></div>
+    <div class="field"><label>Designação</label><input type="text" id="mat-nome" placeholder="ex: Placa Indução Bosch 60cm"></div>
+    <div class="field"><label>Quantidade</label><input type="text" id="mat-qty" placeholder="ex: 1 un"></div>
+    <div class="field"><label>Notas</label><input type="text" id="mat-notas" placeholder="opcional"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-material')">Cancelar</button>
+      <button class="btn btn-primary" onclick="addMaterial()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Importar de alçado -->
+<div class="modal-bg" id="modal-importar">
+  <div class="modal">
+    <div class="modal-title">Importar de <em>Alçado</em></div>
+    <div class="field"><label>Origem</label><select id="import-src" onchange="renderImportList()"></select></div>
+    <div class="modal-list" id="import-list"></div>
+    <p style="font-size:.68rem;color:var(--text3);margin-bottom:.75rem">Importados ficam no centro — arrasta para reposicionar.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-importar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarImportar()">Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Da biblioteca -->
+<div class="modal-bg" id="modal-bib-pick">
+  <div class="modal">
+    <div class="modal-title">Da <em>Biblioteca</em></div>
+    <div class="modal-list" id="bib-pick-list"></div>
+    <p style="font-size:.68rem;color:var(--text3);margin-bottom:.75rem">Adicionados ficam no centro — arrasta para reposicionar.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-bib-pick')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarBibPick()">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Partilhar -->
+<div class="modal-bg" id="modal-share">
+  <div class="modal">
+    <div class="modal-title">Partilhar <em>Obra</em></div>
+    <div class="plabel" style="margin-bottom:.4rem">Técnico</div>
+    <div class="share-box" id="share-tec" onclick="copyText(this.textContent,'Link técnico copiado ✓')"></div>
+    <div class="share-hint">Clica para copiar</div>
+    <div class="plabel" style="margin:.85rem 0 .4rem">Cliente</div>
+    <div class="share-box" id="share-cli" onclick="copyText(this.textContent,'Link cliente copiado ✓')"></div>
+    <div class="share-hint">Clica para copiar</div>
+    <div class="modal-actions" style="margin-top:1rem">
+      <button class="btn btn-secondary" onclick="closeModal('modal-share')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+/* ── Firebase ─────────────────────────────── */
+const FB = {
+  apiKey:'AIzaSyALyrpFSGx4evXtOYCfRIvWc_jTjByz0R8',
+  authDomain:'hm-projetos-lm.firebaseapp.com',
+  projectId:'hm-projetos-lm',
+  storageBucket:'hm-projetos-lm.firebasestorage.app',
+  messagingSenderId:'772658359928',
+  appId:'1:772658359928:web:98332ec006329f380ec78d',
+};
+const app  = initializeApp(FB);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+/* ── Auth guard ───────────────────────────── */
+onAuthStateChanged(auth, u => { if (!u) location.href = 'index.html'; });
+
+/* ══════════════════════════════════════════
+   TIPOS DE HOTSPOT
+══════════════════════════════════════════ */
+const TIPOS = [
+  { id:'equipamento',  label:'Equipamento',     forma:'circle',  sim:'N',  cor:'#2dd898', grupo:'equip'  },
+  { id:'agua_fria',    label:'Água Fria',        forma:'drop',    sim:'❄',  cor:'#38bdf8', grupo:'hidra'  },
+  { id:'agua_quente',  label:'Água Quente',      forma:'drop',    sim:'♨',  cor:'#fb923c', grupo:'hidra'  },
+  { id:'esgoto',       label:'Esgoto',           forma:'hex',     sim:'↓',  cor:'#6b7280', grupo:'hidra'  },
+  { id:'tomada',       label:'Tomada',           forma:'square',  sim:'⚡', cor:'#e8a234', grupo:'elec'   },
+  { id:'circuito',     label:'Circuito Ded.',    forma:'square',  sim:'◎',  cor:'#b45309', grupo:'elec'   },
+  { id:'led',          label:'Fita LED',         forma:'square',  sim:'∿',  cor:'#fde047', grupo:'elec'   },
+  { id:'gas',          label:'Gás',              forma:'diamond', sim:'◈',  cor:'#f59e0b', grupo:'outros' },
+  { id:'nota_imp',     label:'Nota Importante',  forma:'square',  sim:'!',  cor:'#f05252', grupo:'notas'  },
+  { id:'nota_info',    label:'Nota Consultiva',  forma:'square',  sim:'i',  cor:'#9d7dea', grupo:'notas'  },
+  { id:'confirmado',   label:'Confirmado',       forma:'square',  sim:'✓',  cor:'#2dd898', grupo:'notas'  },
+];
+const GRUPOS = { equip:'Equipamento', hidra:'Hidráulica', elec:'Eléctrico', outros:'Outros', notas:'Notas' };
+const PIN_SCALE = { s:.025, m:.038, l:.055, xl:.075 };
+const PIN_MIN   = { s:16,   m:24,   l:32,   xl:44  };
+const PIN_MAX   = { s:28,   m:40,   l:56,   xl:72  };
+
+function getTipo(id) { return TIPOS.find(t=>t.id===id) || S.tiposCustom.find(t=>t.id===id) || TIPOS[0]; }
+
+function pinSVG(tipoId, label, sz) {
+  const t   = getTipo(tipoId);
+  const cor = t.cor;
+  const sim = tipoId==='equipamento' ? label : t.sim;
+  const cx  = sz/2, cy = sz/2, r = sz/2 - 2;
+  const fill= 'rgba(8,10,14,.92)';
+  let sh = '';
+  if      (t.forma==='circle')  sh = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  else if (t.forma==='drop')    sh = `<ellipse cx="${cx}" cy="${cy-1}" rx="${r}" ry="${r+2}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  else if (t.forma==='hex') {
+    const pts = Array.from({length:6},(_,i)=>{const a=(60*i-30)*Math.PI/180;return`${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`;}).join(' ');
+    sh = `<polygon points="${pts}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  }
+  else if (t.forma==='square')  sh = `<rect x="2" y="2" width="${sz-4}" height="${sz-4}" rx="${Math.round(sz*.15)}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  else if (t.forma==='diamond') sh = `<polygon points="${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}" fill="${fill}" stroke="${cor}" stroke-width="2"/>`;
+  const fs = sim && sim.length>1 ? Math.round(sz*.32) : Math.round(sz*.38);
+  const tx = `<text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle" fill="${cor}" font-size="${fs}" font-family="DM Mono,monospace" font-weight="600">${sim}</text>`;
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">${sh}${tx}</svg>`;
+}
+
+function pinSz(sizeKey) {
+  const img = document.getElementById('alcado-img');
+  const w   = img?.getBoundingClientRect().width || 600;
+  const k   = sizeKey || 'm';
+  return Math.min(PIN_MAX[k], Math.max(PIN_MIN[k], Math.round(w * PIN_SCALE[k])));
+}
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+const S = {
+  obraId: '',
+  alcados: [],   // [{ key, nome, temImg, rotation, rotacaoConfirmada }]
+  hotspots: {},  // { key: [{ id, x, y, tipo, pinSize, label, cota, tec, cli, bibId }] }
+  materiais: [],
+  biblioteca: [],
+  tiposCustom: [],
+  activeKey: null,
+  imgCache: {},  // { key: base64 } — imagens carregadas
+  mode: 'ver',
+  rotation: 0,
+  editId: null,
+  pendingXY: null,
+  selHsId: null,
+  dragging: null,
+  _didDrag: false,
+};
+let curTipo = 'tomada';
+let curSz   = 'm';
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+const obraId = new URLSearchParams(location.search).get('obra');
+if (!obraId) { location.href = 'index.html'; }
+else { S.obraId = obraId; load(); }
+
+async function load() {
+  try {
+    const snap = await getDoc(doc(db,'obras',obraId));
+    if (!snap.exists()) { toast('Obra não encontrada','err'); return; }
+    const d = snap.data();
+    S.alcados    = d.alcados    || [];
+    S.hotspots   = d.hotspots   || {};
+    S.materiais  = d.materiais  || [];
+    S.biblioteca = d.biblioteca || [];
+    S.tiposCustom= d.tiposCustom|| [];
+
+    document.getElementById('f-nome').value   = d.nome   || '';
+    document.getElementById('f-morada').value = d.morada || '';
+    document.getElementById('f-notas').value  = d.notas  || '';
+    document.getElementById('tb-obra').innerHTML = `<b>${d.nome||obraId}</b> <span style="color:var(--text3)">· ${obraId}</span>`;
+    document.getElementById('links-sec').style.display = 'block';
+    updateShareLinks();
+    renderAlcados(); renderMateriais(); renderBib();
+    renderTipoGrid();
+
+    // Carregar imagens em background
+    S.alcados.forEach(a => { if (a.temImg) loadImgBg(a.key); });
+  } catch(e) { toast('Erro: '+e.message,'err'); }
+}
+
+async function loadImgBg(key) {
+  if (S.imgCache[key]) return;
+  try {
+    const s = await getDoc(doc(db,'obras_imagens',`${obraId}_${key}`));
+    if (s.exists()) {
+      S.imgCache[key] = s.data().img;
+      const a = S.alcados.find(x=>x.key===key);
+      if (a) a.img = S.imgCache[key];
+      if (S.activeKey === key) showImage(S.imgCache[key]);
+    }
+  } catch(_) {}
+}
+
+/* ══════════════════════════════════════════
+   GUARDAR
+══════════════════════════════════════════ */
+window.guardar = async () => {
+  try {
+    // Guardar imagens em documentos separados
+    const imgPromises = S.alcados.map(a => {
+      const img = a.imgRotated || a.img;
+      if (!img) return Promise.resolve();
+      return setDoc(doc(db,'obras_imagens',`${obraId}_${a.key}`), { obraId, key:a.key, img }, { merge:true });
+    });
+    await Promise.all(imgPromises);
+
+    // Documento principal sem imagens
+    const alcadosClean = S.alcados.map(({key,nome,ordem,temImg,rotation,rotacaoConfirmada}) =>
+      ({key, nome, temImg:!!(S.imgCache[key]||temImg), rotation:rotation||0, rotacaoConfirmada:rotacaoConfirmada||false}));
+
+    await setDoc(doc(db,'obras',obraId), {
+      nome:    document.getElementById('f-nome').value.trim()   || obraId,
+      morada:  document.getElementById('f-morada').value.trim() || '',
+      notas:   document.getElementById('f-notas').value.trim()  || '',
+      alcados:   alcadosClean,
+      hotspots:  S.hotspots,
+      materiais: S.materiais,
+      biblioteca:S.biblioteca,
+      tiposCustom:S.tiposCustom,
+      updatedAt: new Date().toISOString(),
+    }, { merge:true });
+
+    const pill = document.getElementById('saved-pill');
+    pill.classList.add('show');
+    setTimeout(()=>pill.classList.remove('show'), 2500);
+    toast('Guardado ✓','ok');
+  } catch(e) { toast('Erro: '+e.message,'err'); }
+};
+
+/* ══════════════════════════════════════════
+   PANEL TABS
+══════════════════════════════════════════ */
+window.ptab = id => {
+  document.querySelectorAll('[data-tab]').forEach(el => el.classList.toggle('on', el.dataset.tab===id));
+  document.querySelectorAll('.ptab').forEach(b => b.classList.toggle('on', b.dataset.for===id));
+};
+
+/* ══════════════════════════════════════════
+   ALÇADOS
+══════════════════════════════════════════ */
+function renderAlcados() {
+  const el = document.getElementById('alcado-list');
+  if (!S.alcados.length) { el.innerHTML='<div class="empty"><div class="empty-ico">📐</div>Sem alçados</div>'; return; }
+  el.innerHTML='';
+  S.alcados.forEach(a => {
+    const n   = (S.hotspots[a.key]||[]).length;
+    const row = document.createElement('div');
+    row.className   = 'alcado-row'+(S.activeKey===a.key?' on':'');
+    row.draggable   = true;
+    row.dataset.key = a.key;
+    row.innerHTML   = `
+      <div class="alcado-handle" title="Arrastar">⠿</div>
+      <div class="alcado-dot"></div>
+      <span class="alcado-name">${a.nome}</span>
+      <span class="alcado-count">${n}</span>
+      <button class="alcado-del" onclick="delAlcado('${a.key}',event)" title="Eliminar">✕</button>`;
+    row.onclick = e => { if(e.target.closest('.alcado-del,.alcado-handle')) return; activateAlcado(a.key); };
+    row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain',a.key); setTimeout(()=>row.classList.add('dragging'),0); });
+    row.addEventListener('dragend',   ()=>row.classList.remove('dragging'));
+    row.addEventListener('dragover',  e=>{ e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', ()=>row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      const fk = e.dataTransfer.getData('text/plain');
+      if (fk===a.key) return;
+      const fi = S.alcados.findIndex(x=>x.key===fk);
+      const ti = S.alcados.findIndex(x=>x.key===a.key);
+      const [m] = S.alcados.splice(fi,1);
+      S.alcados.splice(ti,0,m);
+      renderAlcados(); toast('Reordenado','ok');
+    });
+    el.appendChild(row);
+  });
+}
+
+window.addAlcado = () => {
+  const nome = document.getElementById('alc-nome').value.trim();
+  const key  = document.getElementById('alc-key').value.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  if (!nome||!key) return toast('Preenche nome e key','err');
+  if (S.alcados.find(a=>a.key===key)) return toast('Key já existe','err');
+  S.alcados.push({ key, nome, temImg:false, rotation:0, rotacaoConfirmada:false });
+  S.hotspots[key] = [];
+  closeModal('modal-alcado');
+  document.getElementById('alc-nome').value='';
+  document.getElementById('alc-key').value='';
+  renderAlcados();
+  activateAlcado(key);
+  toast('Alçado adicionado','ok');
+};
+
+window.delAlcado = (key, e) => {
+  e.stopPropagation();
+  if (!confirm('Eliminar este alçado e todos os hotspots?')) return;
+  S.alcados = S.alcados.filter(a=>a.key!==key);
+  delete S.hotspots[key];
+  delete S.imgCache[key];
+  if (S.activeKey===key) { S.activeKey=null; showUpload(); }
+  renderAlcados(); renderHsList();
+};
+
+function activateAlcado(key) {
+  S.activeKey = key;
+  const a = S.alcados.find(x=>x.key===key);
+  if (!a) return;
+  S.rotation = a.rotation || 0;
+  renderAlcados(); renderHsList();
+  ptab('tab-alcados');
+
+  const img = S.imgCache[key] || a.img || a.imgRotated;
+  if (img) showImage(img);
+  else showUpload();
+
+  renderMarkers();
+  const btn = document.getElementById('btn-rot-confirm');
+  btn.style.display = (img && !a.rotacaoConfirmada && a.rotation) ? 'block' : 'none';
+}
+
+/* ══════════════════════════════════════════
+   IMAGEM
+══════════════════════════════════════════ */
+function showUpload() {
+  document.getElementById('upload-zone').style.display = 'flex';
+  document.getElementById('stage').style.display = 'none';
+}
+function showImage(b64) {
+  document.getElementById('upload-zone').style.display = 'none';
+  const stage = document.getElementById('stage');
+  stage.style.display = 'flex';
+  const img = document.getElementById('alcado-img');
+  img.src = b64;
+  img.onload = () => { renderMarkers(); };
+}
+
+window.triggerUpload = () => {
+  if (!S.activeKey) return toast('Selecciona um alçado primeiro','err');
+  document.getElementById('file-input').click();
+};
+
+window.handleUpload = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 8*1024*1024) return toast('Ficheiro demasiado grande (máx 8MB)','err');
+  const pulse = document.getElementById('up-pulse');
+  pulse.style.display = 'block';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const b64 = ev.target.result;
+    const a   = S.alcados.find(x=>x.key===S.activeKey);
+    if (a) { a.img=b64; a.rotation=0; a.rotacaoConfirmada=true; a.temImg=true; }
+    S.imgCache[S.activeKey] = b64;
+    pulse.style.display = 'none';
+    showImage(b64);
+    renderAlcados();
+    toast('Imagem carregada ✓','ok');
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+};
+
+/* ══════════════════════════════════════════
+   ROTAÇÃO (via canvas)
+══════════════════════════════════════════ */
+window.rodar = delta => {
+  const a = S.alcados.find(x=>x.key===S.activeKey);
+  if (!a?.img && !S.imgCache[S.activeKey]) return toast('Sem imagem para rodar','err');
+  S.rotation = ((S.rotation + delta) % 360 + 360) % 360;
+  a.rotation = S.rotation;
+  a.rotacaoConfirmada = false;
+  document.getElementById('btn-rot-confirm').style.display = 'block';
+
+  // Pré-visualizar com CSS (rápido)
+  const img = document.getElementById('alcado-img');
+  img.style.transform = S.rotation ? `rotate(${S.rotation}deg)` : '';
+  toast(`Rotação: ${S.rotation}°  —  confirma quando estiver certo`,'ok');
+};
+
+window.confirmarRotacao = () => {
+  const img  = document.getElementById('alcado-img');
+  const a    = S.alcados.find(x=>x.key===S.activeKey);
+  if (!a) return;
+
+  // Usar canvas para bake da rotação
+  const canvas = document.createElement('canvas');
+  const ctx    = canvas.getContext('2d');
+  const sw = img.naturalWidth, sh = img.naturalHeight;
+  const swap = S.rotation===90 || S.rotation===270;
+  canvas.width  = swap ? sh : sw;
+  canvas.height = swap ? sw : sh;
+  ctx.translate(canvas.width/2, canvas.height/2);
+  ctx.rotate(S.rotation * Math.PI/180);
+  ctx.drawImage(img, -sw/2, -sh/2);
+
+  const rotated = canvas.toDataURL('image/jpeg', 0.92);
+  img.style.transform = '';
+  img.src = rotated;
+  a.imgRotated = rotated;
+  a.img        = rotated;
+  a.rotation   = 0;
+  a.rotacaoConfirmada = true;
+  S.rotation   = 0;
+  S.imgCache[S.activeKey] = rotated;
+
+  document.getElementById('btn-rot-confirm').style.display = 'none';
+  img.onload = () => renderMarkers();
+  toast('Rotação confirmada ✓','ok');
+};
+
+/* ══════════════════════════════════════════
+   MODO
+══════════════════════════════════════════ */
+window.setMode = m => {
+  S.mode = m;
+  document.getElementById('btn-ver').classList.toggle('on', m==='ver');
+  document.getElementById('btn-colocar').classList.toggle('on', m==='colocar');
+  document.getElementById('img-wrap').classList.toggle('placing', m==='colocar');
+  document.getElementById('canvas-hint').textContent = m==='colocar' ? 'Clica na imagem para colocar hotspot' : '';
+};
+
+/* ══════════════════════════════════════════
+   CANVAS — click / mousemove
+══════════════════════════════════════════ */
+document.getElementById('img-wrap').addEventListener('click', ev => {
+  if (S.mode!=='colocar') return;
+  if (!S.activeKey) return toast('Selecciona um alçado','err');
+  const a = S.alcados.find(x=>x.key===S.activeKey);
+  if (a?.img && !a.rotacaoConfirmada && a.rotation) return toast('Confirma a rotação antes de colocar hotspots','err');
+
+  const img  = document.getElementById('alcado-img');
+  const rect = img.getBoundingClientRect();
+  S.pendingXY = {
+    x: +((ev.clientX-rect.left)/rect.width*100).toFixed(2),
+    y: +((ev.clientY-rect.top)/rect.height*100).toFixed(2),
+  };
+  S.editId = null;
+  openRp(false);
+});
+
+document.getElementById('img-wrap').addEventListener('mousemove', ev => {
+  const img = document.getElementById('alcado-img');
+  if (!img.src || img.src===location.href) return;
+  const r = img.getBoundingClientRect();
+  document.getElementById('coord-pill').textContent =
+    `${((ev.clientX-r.left)/r.width*100).toFixed(1)}% · ${((ev.clientY-r.top)/r.height*100).toFixed(1)}%`;
+});
+
+/* ══════════════════════════════════════════
+   RIGHT PANEL
+══════════════════════════════════════════ */
+function openRp(editMode) {
+  document.getElementById('right').classList.add('open');
+  document.getElementById('bib-check-row').style.display = editMode ? 'none' : 'flex';
+  if (!editMode) {
+    document.getElementById('hs-bib').checked = false;
+    setSz('m');
+  }
+  renderTipoGrid();
+}
+window.closeRp = () => {
+  document.getElementById('right').classList.remove('open');
+  S.pendingXY=null; S.editId=null;
+  document.querySelectorAll('.mk').forEach(m=>m.classList.remove('on'));
+  S.selHsId=null;
+};
+
+/* ── Tipo grid ─── */
+function renderTipoGrid() {
+  const el = document.getElementById('tipo-grid');
+  el.innerHTML='';
+  let lastGrupo = null;
+  TIPOS.forEach(t => {
+    if (t.grupo!==lastGrupo) {
+      const sep=document.createElement('div');
+      sep.className='tipo-section-label';
+      sep.textContent=GRUPOS[t.grupo]||t.grupo;
+      el.appendChild(sep);
+      // Reset grid para cada grupo
+      const grid=document.createElement('div');
+      grid.className='tipo-grid';
+      grid.id='tg-'+t.grupo;
+      el.appendChild(grid);
+      lastGrupo=t.grupo;
+    }
+    const grid=document.getElementById('tg-'+t.grupo);
+    const btn=document.createElement('div');
+    const isSel=curTipo===t.id;
+    btn.className='tipo-btn'+(isSel?' on':'');
+    btn.style.cssText=`border-color:${isSel?t.cor:'var(--border)'};color:${isSel?t.cor:'var(--text3)'};background:${isSel?t.cor+'22':'transparent'}`;
+    btn.innerHTML=pinSVG(t.id,'',16)+`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.65rem">${t.label}</span>`;
+    btn.onclick=()=>selTipo(t.id);
+    btn.dataset.tipo=t.id;
+    grid.appendChild(btn);
+  });
+}
+
+function selTipo(id) {
+  curTipo=id;
+  document.querySelectorAll('.tipo-btn').forEach(b=>{
+    const t=getTipo(b.dataset.tipo);
+    const sel=b.dataset.tipo===id;
+    b.classList.toggle('on',sel);
+    b.style.borderColor=sel?t.cor:'var(--border)';
+    b.style.color=sel?t.cor:'var(--text3)';
+    b.style.background=sel?t.cor+'22':'transparent';
+  });
+}
+window.selTipo=selTipo;
+
+function setSz(sz) {
+  curSz=sz;
+  document.querySelectorAll('.size-btn').forEach(b=>b.classList.toggle('on',b.dataset.sz===sz));
+}
+window.setSz=setSz;
+
+/* ══════════════════════════════════════════
+   HOTSPOTS — CRUD
+══════════════════════════════════════════ */
+window.saveHs = () => {
+  const label = document.getElementById('hs-label').value.trim();
+  const cota  = document.getElementById('hs-cota').value.trim();
+  const tec   = document.getElementById('hs-tec').value.trim();
+  const cli   = document.getElementById('hs-cli').value.trim();
+  const toBib = document.getElementById('hs-bib').checked;
+  if (!label) return toast('Insere um label','err');
+
+  const key = S.activeKey;
+  if (!S.hotspots[key]) S.hotspots[key]=[];
+
+  if (S.editId) {
+    const h = S.hotspots[key].find(x=>x.id===S.editId);
+    if (h) Object.assign(h, { label, cota, tec, cli, tipo:curTipo, pinSize:curSz });
+    const bh = S.biblioteca.find(b=>b.id===h?.bibId);
+    if (bh) Object.assign(bh, { label, cota, tec, cli, tipo:curTipo });
+  } else {
+    if (!S.pendingXY) return;
+    let bibId=null;
+    if (toBib) {
+      bibId='bib_'+Date.now();
+      S.biblioteca.push({ id:bibId, tipo:curTipo, label, cota, tec, cli });
+      renderBib();
+    }
+    S.hotspots[key].push({ id:'hs_'+Date.now(), x:S.pendingXY.x, y:S.pendingXY.y, tipo:curTipo, pinSize:curSz, label, cota, tec, cli, bibId });
+  }
+
+  closeRp(); renderHsList(); renderMarkers(); renderAlcados();
+  toast(toBib?'Guardado + adicionado à biblioteca':'Hotspot guardado','ok');
+};
+
+function renderHsList() {
+  const el  = document.getElementById('hs-list');
+  const hss = S.activeKey ? (S.hotspots[S.activeKey]||[]) : [];
+  if (!hss.length) { el.innerHTML='<div class="empty"><div class="empty-ico">○</div>Sem hotspots neste alçado</div>'; return; }
+  el.innerHTML='';
+  hss.forEach(h => {
+    const t    = getTipo(h.tipo);
+    const item = document.createElement('div');
+    item.className='hs-item'+(S.selHsId===h.id?' on':'');
+    item.innerHTML=`<div class="hs-top"><div class="hs-dot" style="background:${t.cor}"></div><span class="hs-lbl">${h.label}</span><button class="hs-del" onclick="delHs('${h.id}',event)">✕</button></div><div class="hs-preview">${h.cota||h.tec||'—'}</div>`;
+    item.onclick=()=>editHs(h.id);
+    el.appendChild(item);
+  });
+}
+
+window.editHs = id => {
+  const h=(S.hotspots[S.activeKey]||[]).find(x=>x.id===id);
+  if(!h) return;
+  S.editId=id; S.selHsId=id;
+  document.getElementById('hs-label').value=h.label;
+  document.getElementById('hs-cota').value=h.cota||'';
+  document.getElementById('hs-tec').value=h.tec||'';
+  document.getElementById('hs-cli').value=h.cli||'';
+  document.getElementById('rp-coords').textContent=`x:${h.x}%  y:${h.y}%`;
+  document.getElementById('rp-title').textContent='Editar Hotspot';
+  selTipo(h.tipo||'tomada'); setSz(h.pinSize||'m');
+  renderHsList();
+  document.querySelectorAll('.mk').forEach(m=>m.classList.toggle('on',m.id==='mk-'+id));
+  openRp(true);
+};
+
+window.delHs = (id,e) => {
+  e.stopPropagation();
+  S.hotspots[S.activeKey]=(S.hotspots[S.activeKey]||[]).filter(h=>h.id!==id);
+  if(S.editId===id) closeRp();
+  renderHsList(); renderMarkers(); renderAlcados();
+};
+
+/* ══════════════════════════════════════════
+   MARKERS
+══════════════════════════════════════════ */
+function renderMarkers() {
+  const wrap=document.getElementById('img-wrap');
+  wrap.querySelectorAll('.mk').forEach(el=>el.remove());
+  const hss=S.activeKey?(S.hotspots[S.activeKey]||[]):[];
+  let eq=0;
+  hss.forEach((h,i)=>{
+    const isEq=h.tipo==='equipamento';
+    if(isEq) eq++;
+    const lbl   = isEq?String(eq):String(i+1);
+    const sz    = pinSz(h.pinSize||'m');
+    const mk    = document.createElement('div');
+    mk.className='mk'+(S.selHsId===h.id?' on':'');
+    mk.id='mk-'+h.id;
+    mk.style.cssText=`position:absolute;left:${h.x}%;top:${h.y}%;transform:translate(-50%,-50%);z-index:10`;
+    mk.innerHTML=pinSVG(h.tipo,lbl,sz);
+    const svg=mk.querySelector('svg');
+    svg.addEventListener('click',ev=>{ev.stopPropagation();if(!S._didDrag)editHs(h.id);S._didDrag=false;});
+    svg.addEventListener('mousedown',ev=>startDrag(ev,h.id));
+    wrap.appendChild(mk);
+  });
+}
+
+/* ── Drag markers ─── */
+function startDrag(ev, id) {
+  ev.stopPropagation(); ev.preventDefault();
+  const img  = document.getElementById('alcado-img');
+  const rect = img.getBoundingClientRect();
+  const h    = (S.hotspots[S.activeKey]||[]).find(x=>x.id===id);
+  if (!h) return;
+  S.dragging={id,rect}; S._didDrag=false;
+  document.getElementById('img-wrap').style.cursor='grabbing';
+  const onMove=ev2=>{
+    if(!S.dragging) return;
+    h.x=+(Math.min(99,Math.max(1,(ev2.clientX-S.dragging.rect.left)/S.dragging.rect.width*100)).toFixed(2));
+    h.y=+(Math.min(99,Math.max(1,(ev2.clientY-S.dragging.rect.top)/S.dragging.rect.height*100)).toFixed(2));
+    const mk=document.getElementById('mk-'+id);
+    if(mk){mk.style.left=h.x+'%';mk.style.top=h.y+'%';}
+    S._didDrag=true;
+  };
+  const onUp=()=>{
+    S.dragging=null;
+    document.getElementById('img-wrap').style.cursor='';
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+  };
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+}
+
+// Re-render ao resize
+let _rt;
+window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(S.activeKey)renderMarkers();},150);});
+
+/* ══════════════════════════════════════════
+   MATERIAIS
+══════════════════════════════════════════ */
+window.addMaterial = () => {
+  const ref  = document.getElementById('mat-ref').value.trim();
+  const nome = document.getElementById('mat-nome').value.trim();
+  const qty  = document.getElementById('mat-qty').value.trim();
+  const notas= document.getElementById('mat-notas').value.trim();
+  if (!nome) return toast('Insere o nome do artigo','err');
+  S.materiais.push({ id:'mat_'+Date.now(), ref, nome, qty, notas });
+  renderMateriais(); closeModal('modal-material');
+  ['mat-ref','mat-nome','mat-qty','mat-notas'].forEach(id=>document.getElementById(id).value='');
+  toast('Artigo adicionado','ok');
+};
+
+function renderMateriais() {
+  const el=document.getElementById('mat-list');
+  if(!S.materiais.length){el.innerHTML='<div class="empty"><div class="empty-ico">📦</div>Sem materiais</div>';return;}
+  el.innerHTML='';
+  S.materiais.forEach(m=>{
+    const item=document.createElement('div');
+    item.className='mat-item';
+    item.innerHTML=`<span class="mat-ref">${m.ref||'—'}</span><span class="mat-nome">${m.nome}</span><span class="mat-qty">${m.qty||'1'}</span><button class="mat-del" onclick="delMat('${m.id}')">✕</button>`;
+    el.appendChild(item);
+  });
+}
+window.delMat=id=>{S.materiais=S.materiais.filter(m=>m.id!==id);renderMateriais();};
+
+/* ══════════════════════════════════════════
+   BIBLIOTECA
+══════════════════════════════════════════ */
+function renderBib() {
+  const el=document.getElementById('bib-list');
+  if(!S.biblioteca.length){el.innerHTML='<div class="empty"><div class="empty-ico">☆</div>Biblioteca vazia</div>';return;}
+  el.innerHTML='';
+  S.biblioteca.forEach(b=>{
+    const t=getTipo(b.tipo);
+    const item=document.createElement('div');
+    item.className='hs-item';
+    item.innerHTML=`<div class="hs-top"><div class="hs-dot" style="background:${t.cor}"></div><span class="hs-lbl">${b.label}</span><button class="hs-del" onclick="delBib('${b.id}',event)">✕</button></div><div class="hs-preview">${b.cota||b.tec||'—'}</div>`;
+    el.appendChild(item);
+  });
+}
+window.delBib=(id,e)=>{e.stopPropagation();S.biblioteca=S.biblioteca.filter(b=>b.id!==id);renderBib();};
+
+/* ══════════════════════════════════════════
+   IMPORTAR / BIBLIOTECA PICK
+══════════════════════════════════════════ */
+window.renderImportList = () => {
+  const srcKey = document.getElementById('import-src').value;
+  const el     = document.getElementById('import-list');
+  const hss    = S.hotspots[srcKey]||[];
+  if (!hss.length) { el.innerHTML='<div style="font-size:.72rem;color:var(--text3);padding:.5rem">Sem hotspots neste alçado</div>'; return; }
+  el.innerHTML='';
+  hss.forEach(h=>{
+    const t=getTipo(h.tipo);
+    const row=document.createElement('label');
+    row.className='modal-check-item';
+    row.innerHTML=`<input type="checkbox" data-id="${h.id}" data-key="${srcKey}" style="accent-color:var(--accent)"><div style="width:8px;height:8px;border-radius:50%;background:${t.cor};flex-shrink:0"></div><span>${h.label}</span>`;
+    el.appendChild(row);
+  });
+};
+
+window.confirmarImportar = () => {
+  const checked=document.querySelectorAll('#import-list input:checked');
+  if(!checked.length) return toast('Selecciona pelo menos um','err');
+  const srcKey=checked[0].dataset.key;
+  let n=0;
+  checked.forEach(cb=>{
+    const h=(S.hotspots[srcKey]||[]).find(x=>x.id===cb.dataset.id);
+    if(!h) return;
+    S.hotspots[S.activeKey].push({id:'hs_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),x:50,y:50,tipo:h.tipo,pinSize:h.pinSize||'m',label:h.label,cota:h.cota||'',tec:h.tec||'',cli:h.cli||''});
+    n++;
+  });
+  closeModal('modal-importar');
+  renderHsList(); renderMarkers(); renderAlcados();
+  toast(`${n} hotspot${n!==1?'s':''} importado${n!==1?'s':''} — arrasta para reposicionar`,'ok');
+};
+
+window.confirmarBibPick = () => {
+  const checked=document.querySelectorAll('#bib-pick-list input:checked');
+  if(!checked.length) return toast('Selecciona pelo menos um','err');
+  let n=0;
+  checked.forEach(cb=>{
+    const b=S.biblioteca.find(x=>x.id===cb.dataset.id);
+    if(!b) return;
+    S.hotspots[S.activeKey].push({id:'hs_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),x:50,y:50,tipo:b.tipo,pinSize:'m',label:b.label,cota:b.cota||'',tec:b.tec||'',cli:b.cli||'',bibId:b.id});
+    n++;
+  });
+  closeModal('modal-bib-pick');
+  renderHsList(); renderMarkers(); renderAlcados();
+  toast(`${n} hotspot${n!==1?'s':''} adicionado${n!==1?'s':''}`,'ok');
+};
+
+/* ══════════════════════════════════════════
+   MODAIS
+══════════════════════════════════════════ */
+window.openModal = id => {
+  if (id==='modal-importar') {
+    if (!S.activeKey) return toast('Selecciona um alçado de destino','err');
+    const sel=document.getElementById('import-src');
+    sel.innerHTML=S.alcados.filter(a=>a.key!==S.activeKey).map(a=>`<option value="${a.key}">${a.nome}</option>`).join('');
+    if (!sel.options.length) return toast('Não há outros alçados','err');
+    renderImportList();
+  }
+  if (id==='modal-bib-pick') {
+    if (!S.activeKey) return toast('Selecciona um alçado de destino','err');
+    const el=document.getElementById('bib-pick-list');
+    if (!S.biblioteca.length) { el.innerHTML='<div style="font-size:.72rem;color:var(--text3);padding:.5rem">Biblioteca vazia</div>'; }
+    else {
+      el.innerHTML='';
+      S.biblioteca.forEach(b=>{
+        const t=getTipo(b.tipo);
+        const row=document.createElement('label');
+        row.className='modal-check-item';
+        row.innerHTML=`<input type="checkbox" data-id="${b.id}" style="accent-color:var(--accent)"><div style="width:8px;height:8px;border-radius:50%;background:${t.cor};flex-shrink:0"></div><span>${b.label}</span>`;
+        el.appendChild(row);
+      });
+    }
+  }
+  if (id==='modal-share') updateShareLinks();
+  document.getElementById(id).classList.add('open');
+};
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+/* ══════════════════════════════════════════
+   SHARE LINKS
+══════════════════════════════════════════ */
+function getBase() {
+  return location.origin + location.pathname.replace(/editor\.html$/,'');
+}
+function updateShareLinks() {
+  const base=getBase();
+  document.getElementById('share-tec').textContent=`${base}obra-tecnico.html?obra=${S.obraId}`;
+  document.getElementById('share-cli').textContent=`${base}obra-cliente.html?obra=${S.obraId}`;
+}
+window.copyLink = tipo => {
+  const url = tipo==='tecnico'
+    ? `${getBase()}obra-tecnico.html?obra=${S.obraId}`
+    : `${getBase()}obra-cliente.html?obra=${S.obraId}`;
+  navigator.clipboard.writeText(url).then(()=>toast('Link copiado ✓','ok'));
+};
+window.copyText = (txt,msg) => navigator.clipboard.writeText(txt).then(()=>toast(msg,'ok'));
+
+/* ══════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════ */
+function toast(msg,type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.className='',2600);
+}
+</script>
+</body>
+</html>
