@@ -187,6 +187,13 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 }
 .alcado-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: .8rem; padding: .1rem .25rem; border-radius: 3px; transition: all .15s; }
 .alcado-del:hover { color: var(--red); background: rgba(240,82,82,.1); }
+.alcado-drag-handle {
+  color: var(--text3); cursor: grab; padding: .1rem .3rem; font-size: .85rem;
+  opacity: .5; transition: opacity .15s; user-select: none;
+}
+.alcado-drag-handle:hover { opacity: 1; color: var(--text2); }
+.alcado-row.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+.alcado-row.dragging  { opacity: .4; }
 .btn-add-row {
   margin-top: .4rem; width: 100%; padding: .4rem;
   border: 1px dashed var(--border); background: transparent;
@@ -401,6 +408,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     <span class="topbar-obra" id="tb-obra">Sem obra carregada</span>
     <div class="topbar-actions">
       <span class="saved-indicator" id="saved-ind">✓ guardado</span>
+      <button class="btn btn-ghost btn-sm" onclick="novaObra()" title="Nova obra">＋ Nova</button>
       <button class="btn btn-secondary btn-sm" onclick="showModal('modal-share')">🔗 Partilhar</button>
       <button class="btn btn-success btn-sm" onclick="saveObra()">Guardar</button>
       <button class="btn btn-ghost btn-sm btn-icon" onclick="doLogout()" title="Sair">⎋</button>
@@ -832,6 +840,25 @@ window.doLogin = async () => {
   catch { errEl.textContent = 'Email ou password incorrectos.'; }
 };
 window.doLogout = () => signOut(auth);
+
+window.novaObra = () => {
+  if (S.obraId && !confirm('Tens uma obra aberta. Continuar vai limpar os dados não guardados. Continuar?')) return;
+  S.obraId=''; S.obraNome='';
+  S.alcados=[]; S.activeKey=null;
+  S.hotspots={}; S.materiais=[];
+  S.biblioteca=[]; S.tiposCustom=[];
+  S.rotation=0;
+  document.getElementById('obra-id').value='';
+  document.getElementById('obra-nome').value='';
+  document.getElementById('obra-morada').value='';
+  document.getElementById('obra-notas').value='';
+  document.getElementById('tb-obra').innerHTML='Sem obra carregada';
+  document.getElementById('links-section').style.display='none';
+  showUploadZone();
+  renderAlcados(); renderMateriais(); renderBiblioList();
+  switchPanelTab('obra');
+  toast('Nova obra — preenche o ID e clica Carregar','ok');
+};
 document.getElementById('li-pass').addEventListener('keydown', ev => { if(ev.key==='Enter') window.doLogin(); });
 
 // ─── STATE ─────────────────────────────────────
@@ -971,11 +998,38 @@ function renderAlcados() {
   if (!S.alcados.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📐</div>Sem alçados</div>'; return; }
   el.innerHTML='';
   S.alcados.forEach(a => {
-    const n = (S.hotspots[a.key]||[]).length;
+    const n   = (S.hotspots[a.key]||[]).length;
     const row = document.createElement('div');
-    row.className = 'alcado-row'+(S.activeKey===a.key?' active':'');
-    row.innerHTML = `<div class="alcado-dot"></div><span class="alcado-name">${a.nome}</span><span class="alcado-hs-count">${n}</span><button class="alcado-del" onclick="deleteAlcado('${a.key}',event)" title="Eliminar">✕</button>`;
-    row.onclick = ()=>activateAlcado(a.key);
+    row.className   = 'alcado-row'+(S.activeKey===a.key?' active':'');
+    row.draggable   = true;
+    row.dataset.key = a.key;
+    row.innerHTML   = `
+      <div class="alcado-drag-handle" title="Arrastar para reordenar">⠿</div>
+      <div class="alcado-dot"></div>
+      <span class="alcado-name">${a.nome}</span>
+      <span class="alcado-hs-count">${n}</span>
+      <button class="alcado-del" onclick="deleteAlcado('${a.key}',event)" title="Eliminar">✕</button>`;
+    row.onclick = e => { if(e.target.closest('.alcado-del,.alcado-drag-handle')) return; activateAlcado(a.key); };
+
+    row.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', a.key);
+      setTimeout(()=>row.classList.add('dragging'),0);
+    });
+    row.addEventListener('dragend',  ()=>row.classList.remove('dragging'));
+    row.addEventListener('dragover', e=>{ e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave',()=>row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      const fromKey = e.dataTransfer.getData('text/plain');
+      if (fromKey===a.key) return;
+      const fi = S.alcados.findIndex(x=>x.key===fromKey);
+      const ti = S.alcados.findIndex(x=>x.key===a.key);
+      if (fi<0||ti<0) return;
+      const [moved] = S.alcados.splice(fi,1);
+      S.alcados.splice(ti,0,moved);
+      renderAlcados();
+      toast('Alçados reordenados','ok');
+    });
     el.appendChild(row);
   });
 }
