@@ -1109,12 +1109,16 @@ function svgEl(tag, attrs) {
 }
 
 function svgLabel(g, tx, ty, texto, cor, offsetY=0) {
-  const fs=11, pad=5;
-  const tw = texto.length * fs * 0.58 + pad*2;
-  const th = fs + pad*2;
-  const ly = ty + offsetY;
-  g.appendChild(svgEl('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'rgba(8,10,14,.88)',stroke:cor,'stroke-width':'1.5'}));
-  const t=svgEl('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600','class':'anot-text'});
+  const fs=12, ly=ty+offsetY;
+  // Sombra — texto preto ligeiramente deslocado para criar halo
+  const shadow=svgEl('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',
+    fill:'rgba(0,0,0,.85)','font-size':fs,'font-family':'DM Mono,monospace','font-weight':'700',
+    'stroke':'rgba(0,0,0,.7)','stroke-width':'3','stroke-linejoin':'round','class':'anot-text',
+    'paint-order':'stroke'});
+  shadow.textContent=texto; g.appendChild(shadow);
+  // Texto principal
+  const t=svgEl('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',
+    fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'700','class':'anot-text'});
   t.textContent=texto; g.appendChild(t);
 }
 
@@ -1163,25 +1167,35 @@ function renderAnotacoes() {
     const sw  = '1.8';
     const g   = svgEl('g',{'class':'anot-group','data-id':an.id});
 
-    // ── COTA ──────────────────────────────────────────────────
+    // ── COTA (estilo CAD) ─────────────────────────────────────
     if (an.tipo==='cota') {
-      const SERIF=8, OFF=16;
-      // Calcular offset perpendicular para as linhas de serif
+      const OFF=20; // offset da linha de cota
       const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
-      const nx=-dy/len, ny=dx/len; // normal
+      const nx=-dy/len, ny=dx/len; // perpendicular
       const ox=nx*OFF, oy=ny*OFF;
-      // Linha principal
-      g.appendChild(svgEl('line',{x1:x1+ox,y1:y1+oy,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':sw,'marker-start':'url(#arrow-both)','marker-end':'url(#arrow-both)'}));
-      // Serifs
-      g.appendChild(svgEl('line',{x1:x1,y1:y1,x2:x1+ox,y2:y1+oy,stroke:cor,'stroke-width':sw}));
-      g.appendChild(svgEl('line',{x1:x2,y1:y2,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':sw}));
-      // Etiqueta centrada, afastada da linha
-      if (an.texto) {
-        const cx=(x1+x2)/2+ox+(nx*12);
-        const cy=(y1+y2)/2+oy+(ny*12);
-        svgLabel(g,cx,cy,an.texto,cor);
+      // Linhas de extensão (finas, ligeiramente além da linha de cota)
+      const ext=4;
+      g.appendChild(svgEl('line',{x1,y1,x2:x1+ox+nx*ext,y2:y1+oy+ny*ext,stroke:cor,'stroke-width':'1','stroke-dasharray':'none',opacity:'.7'}));
+      g.appendChild(svgEl('line',{x1:x2,y1:y2,x2:x2+ox+nx*ext,y2:y2+oy+ny*ext,stroke:cor,'stroke-width':'1',opacity:'.7'}));
+      // Linha de cota com setas abertas (CAD)
+      const mId='cad-'+an.id.replace(/\W/g,'');
+      if (!svg.querySelector('#'+mId)) {
+        const defs=svg.querySelector('defs');
+        // Seta aberta estilo CAD
+        ['s','e'].forEach((suf,i) => {
+          const m=svgEl('marker',{id:mId+suf,markerWidth:'10',markerHeight:'8',refX:i?'2':'8',refY:'4',orient:'auto'});
+          m.appendChild(svgEl('path',{d:i?'M10,0 L2,4 L10,8':'M0,0 L8,4 L0,8',stroke:cor,'stroke-width':'1.2',fill:'none','stroke-linecap':'round'}));
+          defs.appendChild(m);
+        });
       }
-      // Del btn
+      g.appendChild(svgEl('line',{x1:x1+ox,y1:y1+oy,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':'1.5',
+        'marker-start':`url(#${mId}s)`,'marker-end':`url(#${mId}e)`}));
+      // Etiqueta centrada sobre a linha de cota
+      if (an.texto) {
+        const cx=(x1+x2)/2+ox, cy=(y1+y2)/2+oy;
+        // Deslocar etiqueta perpendicularmente à linha
+        svgLabel(g, cx+nx*10, cy+ny*10, an.texto, cor);
+      }
       g.appendChild(svgDelBtn(an.id,(x1+x2)/2+ox,(y1+y2)/2+oy-14));
     }
 
