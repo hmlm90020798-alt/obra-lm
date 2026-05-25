@@ -739,14 +739,7 @@ function showUpload() {
   document.getElementById('upload-zone').style.display = 'flex';
   document.getElementById('stage').style.display = 'none';
 }
-function showImage(b64) {
-  document.getElementById('upload-zone').style.display = 'none';
-  const stage = document.getElementById('stage');
-  stage.style.display = 'flex';
-  const img = document.getElementById('alcado-img');
-  img.src = b64;
-  img.onload = () => { renderMarkers(); };
-}
+
 
 window.triggerUpload = () => {
   if (!S.activeKey) return toast('Selecciona um alçado primeiro','err');
