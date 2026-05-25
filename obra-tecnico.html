@@ -121,7 +121,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 }
 
 /* Anotações */
-.anot-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+.anot-svg { position:absolute; top:0; left:0; pointer-events:none; overflow:visible; }
 .anot-text { font-family: 'DM Mono', monospace; }
 
 /* Pins */
@@ -385,7 +385,9 @@ function buildSlides() {
       iw.appendChild(img);
       // SVG overlay para anotações
       const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-      svg.setAttribute('class','anot-svg'); svg.id='asvg-'+i;
+      svg.setAttribute('class','anot-svg');
+      svg.style.cssText='position:absolute;top:0;left:0;pointer-events:none;overflow:visible';
+      svg.id='asvg-'+i;
       svg.innerHTML=`<defs><marker id="ah-${i}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>`;
       iw.appendChild(svg);
     } else {
@@ -511,13 +513,28 @@ stage.addEventListener('touchend', e => {
 function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
 function svgLabelV(g,tx,ty,texto,cor,oY=0){const fs=11,pad=5,tw=texto.length*fs*.58+pad*2,th=fs+pad*2,ly=ty+oY;g.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'rgba(8,10,14,.88)',stroke:cor,'stroke-width':'1.5'}));const t=svgV('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600'});t.textContent=texto;g.appendChild(t);}
 
+function syncAnotSVG(idx) {
+  const svg = document.getElementById('asvg-'+idx);
+  const img = document.querySelector(`#iw-${idx} img`);
+  if (!svg || !img) return;
+  const iw = document.getElementById('iw-'+idx);
+  const wR = iw.getBoundingClientRect();
+  const iR = img.getBoundingClientRect();
+  svg.style.left   = (iR.left - wR.left) + 'px';
+  svg.style.top    = (iR.top  - wR.top)  + 'px';
+  svg.style.width  = iR.width  + 'px';
+  svg.style.height = iR.height + 'px';
+  svg.setAttribute('viewBox', `0 0 ${iR.width} ${iR.height}`);
+}
+
 function renderAnotViewer(idx) {
   const svg = document.getElementById('asvg-'+idx);
   if (!svg) return;
+  syncAnotSVG(idx);
   while (svg.children.length > 1) svg.removeChild(svg.lastChild);
   const img = document.querySelector(`#iw-${idx} img`);
   if (!img) return;
-  const W=img.clientWidth||800, H=img.clientHeight||600;
+  const W=img.getBoundingClientRect().width||800, H=img.getBoundingClientRect().height||600;
   const key=S.alcados[idx]?.key;
   const anots=S.anotacoes[key]||[];
   const sw='1.8';
@@ -604,8 +621,9 @@ window.addEventListener('resize', () => {
   clearTimeout(_rt); _rt=setTimeout(()=>{
     S.alcados.forEach((_,i)=>{
       const img=document.querySelector(`#iw-${i} img`);
-      if(img?.complete) renderPins(i);
+      if(img?.complete) { renderPins(i); renderAnotViewer(i); }
     });
+    applyZoom();
   },150);
 });
 
