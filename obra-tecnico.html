@@ -508,56 +508,65 @@ stage.addEventListener('touchend', e => {
 },{passive:true});
 
 /* ── Pins ──────────────────────────────────── */
+function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
+function svgLabelV(g,tx,ty,texto,cor,oY=0){const fs=11,pad=5,tw=texto.length*fs*.58+pad*2,th=fs+pad*2,ly=ty+oY;g.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'rgba(8,10,14,.88)',stroke:cor,'stroke-width':'1.5'}));const t=svgV('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600'});t.textContent=texto;g.appendChild(t);}
+
 function renderAnotViewer(idx) {
   const svg = document.getElementById('asvg-'+idx);
   if (!svg) return;
-  // Remover anotações anteriores (manter defs)
   while (svg.children.length > 1) svg.removeChild(svg.lastChild);
-  const img   = document.querySelector(`#iw-${idx} img`);
+  const img = document.querySelector(`#iw-${idx} img`);
   if (!img) return;
-  const W = img.clientWidth || 800;
-  const H = img.clientHeight || 600;
-  const key   = S.alcados[idx]?.key;
-  const anots = S.anotacoes[key] || [];
+  const W=img.clientWidth||800, H=img.clientHeight||600;
+  const key=S.alcados[idx]?.key;
+  const anots=S.anotacoes[key]||[];
+  const sw='1.8';
 
-  anots.forEach(an => {
-    const x1=an.x1/100*W, y1=an.y1/100*H, x2=an.x2/100*W, y2=an.y2/100*H;
+  anots.forEach(an=>{
+    const x1=an.x1/100*W,y1=an.y1/100*H,x2=an.x2/100*W,y2=an.y2/100*H;
     const cor=an.cor||'#e8a234';
-    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const g=svgV('g',{});
 
-    if (an.tipo==='seta') {
-      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-      line.setAttribute('x1',x1);line.setAttribute('y1',y1);
-      line.setAttribute('x2',x2);line.setAttribute('y2',y2);
-      line.setAttribute('stroke',cor);line.setAttribute('stroke-width','2');
-      line.setAttribute('marker-end',`url(#ah-${idx})`);
-      // Actualizar cor da seta
-      const mpath=svg.querySelector(`#ah-${idx} path`);
-      if(mpath) mpath.setAttribute('fill',cor);
-      g.appendChild(line);
-      // Ponto origem
-      const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
-      dot.setAttribute('cx',x1);dot.setAttribute('cy',y1);dot.setAttribute('r','3');dot.setAttribute('fill',cor);
-      g.appendChild(dot);
+    if(an.tipo==='cota'){
+      const SERIF=8,OFF=16,dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len,ox=nx*OFF,oy=ny*OFF;
+      const mId='ahc-'+idx+'-'+an.id.replace(/\W/g,'');
+      if(!svg.querySelector('#'+mId)){const defs=svg.querySelector('defs');const m=svgV('marker',{id:mId,markerWidth:'8',markerHeight:'8',refX:'4',refY:'3',orient:'auto'});m.appendChild(svgV('path',{d:'M0,0 L0,6 L8,3 z',fill:cor}));defs.appendChild(m);}
+      g.appendChild(svgV('line',{x1:x1+ox,y1:y1+oy,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':sw,'marker-start':`url(#${mId})`,'marker-end':`url(#${mId})`}));
+      g.appendChild(svgV('line',{x1,y1,x2:x1+ox,y2:y1+oy,stroke:cor,'stroke-width':sw}));
+      g.appendChild(svgV('line',{x1:x2,y1:y2,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':sw}));
+      if(an.texto){const cx=(x1+x2)/2+ox+nx*12,cy=(y1+y2)/2+oy+ny*12;svgLabelV(g,cx,cy,an.texto,cor);}
     }
 
-    if (an.texto) {
-      const pad=6,fs=11;
-      const tw=an.texto.length*fs*0.6+pad*2, th=fs+pad*2;
-      const tx=an.tipo==='seta'?x2:x1, ty=an.tipo==='seta'?y2:y1;
-      const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-      bg.setAttribute('x',tx-tw/2);bg.setAttribute('y',ty-th/2);
-      bg.setAttribute('width',tw);bg.setAttribute('height',th);
-      bg.setAttribute('rx','4');bg.setAttribute('fill','rgba(8,10,14,.85)');
-      bg.setAttribute('stroke',cor);bg.setAttribute('stroke-width','1.5');
-      g.appendChild(bg);
-      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      txt.setAttribute('x',tx);txt.setAttribute('y',ty+1);
-      txt.setAttribute('text-anchor','middle');txt.setAttribute('dominant-baseline','middle');
-      txt.setAttribute('fill',cor);txt.setAttribute('font-size',fs);
-      txt.setAttribute('class','anot-text');txt.textContent=an.texto;
-      g.appendChild(txt);
+    if(an.tipo==='seta'){
+      const mId='ahs-'+idx+'-'+an.id.replace(/\W/g,'');
+      if(!svg.querySelector('#'+mId)){const defs=svg.querySelector('defs');const m=svgV('marker',{id:mId,markerWidth:'8',markerHeight:'8',refX:'6',refY:'3',orient:'auto'});m.appendChild(svgV('path',{d:'M0,0 L0,6 L8,3 z',fill:cor}));defs.appendChild(m);}
+      g.appendChild(svgV('line',{x1,y1,x2,y2,stroke:cor,'stroke-width':sw,'marker-end':`url(#${mId})`}));
+      g.appendChild(svgV('circle',{cx:x1,cy:y1,r:'3',fill:cor}));
+      if(an.texto){const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len;svgLabelV(g,x2+nx*8,y2+ny*8,an.texto,cor);}
     }
+
+    if(an.tipo==='dobrada'){
+      const xm=an.xm/100*W,ym=an.ym/100*H;
+      const mId='ahd-'+idx+'-'+an.id.replace(/\W/g,'');
+      if(!svg.querySelector('#'+mId)){const defs=svg.querySelector('defs');const m=svgV('marker',{id:mId,markerWidth:'8',markerHeight:'8',refX:'6',refY:'3',orient:'auto'});m.appendChild(svgV('path',{d:'M0,0 L0,6 L8,3 z',fill:cor}));defs.appendChild(m);}
+      g.appendChild(svgV('polyline',{points:`${x1},${y1} ${xm},${ym} ${x2},${y2}`,stroke:cor,'stroke-width':sw,fill:'none','marker-end':`url(#${mId})`}));
+      g.appendChild(svgV('circle',{cx:x1,cy:y1,r:'3',fill:cor}));
+      if(an.texto) svgLabelV(g,xm,ym,an.texto,cor,-14);
+    }
+
+    if(an.tipo==='angulo'){
+      const R=32,graus=parseFloat(an.texto)||45,rad=graus*Math.PI/180,startA=-Math.PI/4,endA=startA+rad,large=graus>180?1:0;
+      const sx=x1+R*Math.cos(startA),sy=y1+R*Math.sin(startA),ex=x1+R*Math.cos(endA),ey=y1+R*Math.sin(endA);
+      g.appendChild(svgV('line',{x1,y1,x2:sx,y2:sy,stroke:cor,'stroke-width':sw}));
+      g.appendChild(svgV('line',{x1,y1,x2:ex,y2:ey,stroke:cor,'stroke-width':sw}));
+      g.appendChild(svgV('path',{d:`M${sx},${sy} A${R},${R} 0 ${large},1 ${ex},${ey}`,stroke:cor,'stroke-width':sw,fill:'none'}));
+      g.appendChild(svgV('circle',{cx:x1,cy:y1,r:'3',fill:cor}));
+      const midA=(startA+endA)/2,lx=x1+(R+16)*Math.cos(midA),ly=y1+(R+16)*Math.sin(midA);
+      svgLabelV(g,lx,ly,an.texto,cor);
+    }
+
+    if(an.tipo==='texto') svgLabelV(g,x1,y1,an.texto,cor);
+
     svg.appendChild(g);
   });
 }
