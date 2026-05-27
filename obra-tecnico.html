@@ -238,15 +238,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   <button class="btab"        id="bt-conclusao"   onclick="switchTab('conclusao')">  <span class="btab-ico">✅</span>Conclusão</button>
 </div>
 
-<!-- Modal URL externo -->
-<div id="url-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);flex-direction:column">
-  <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 1rem;background:var(--surface);border-bottom:1px solid var(--border)">
-    <button onclick="closeUrlModal()" style="background:none;border:none;color:var(--text2);font-size:1rem;cursor:pointer;padding:.2rem .4rem">←</button>
-    <span id="url-modal-title" style="font-family:var(--mono);font-size:.72rem;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <a id="url-modal-open" href="#" target="_blank" style="font-family:var(--mono);font-size:.65rem;color:var(--accent);text-decoration:none;flex-shrink:0">↗ Abrir</a>
-  </div>
-  <iframe id="url-modal-frame" src="" style="flex:1;border:none;background:#fff"></iframe>
-</div>
 <div id="toast"></div>
 
 <script type="module">
@@ -517,18 +508,8 @@ function closePopup(){
 }
 window.closePopup=closePopup;
 
-window.openUrlModal=(url,titulo)=>{
-  const modal=document.getElementById('url-modal');
-  document.getElementById('url-modal-title').textContent=url;
-  document.getElementById('url-modal-open').href=url;
-  document.getElementById('url-modal-frame').src=url;
-  modal.style.display='flex';
-};
-window.closeUrlModal=()=>{
-  const modal=document.getElementById('url-modal');
-  modal.style.display='none';
-  document.getElementById('url-modal-frame').src='';
-};
+window.openUrlModal=(url,titulo)=>{ window.open(url,'_blank','noopener'); };
+window.closeUrlModal=()=>{};
 window.goToAlcado=key=>{
   const idx=S.alcados.findIndex(a=>a.key===key);
   if (idx>=0) goTo(idx);

@@ -241,15 +241,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   <button class="btab"        id="bt-aprovacao" onclick="switchTab('aprovacao')"><span class="btab-ico">✅</span>Aprovar</button>
 </div>
 
-<!-- Modal URL -->
-<div id="url-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);flex-direction:column">
-  <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 1.25rem;background:var(--surface);border-bottom:1px solid var(--border)">
-    <button onclick="closeUrlModal()" style="background:none;border:none;color:var(--text2);font-size:1rem;cursor:pointer">←</button>
-    <span id="url-modal-title" style="font-family:var(--mono);font-size:.72rem;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <a id="url-modal-open" href="#" target="_blank" style="font-family:var(--mono);font-size:.65rem;color:var(--gold);text-decoration:none">↗ Abrir</a>
-  </div>
-  <iframe id="url-modal-frame" src="" style="flex:1;border:none;background:#fff"></iframe>
-</div>
 <div id="toast"></div>
 
 <script type="module">
@@ -463,8 +454,8 @@ function openPopup(h,pw,slideIdx){
 function closePopup(){document.getElementById('popup')?.remove();document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));S.popup=null;}
 window.closePopup=closePopup;
 stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
-window.openUrlModal=url=>{const m=document.getElementById('url-modal');document.getElementById('url-modal-title').textContent=url;document.getElementById('url-modal-open').href=url;document.getElementById('url-modal-frame').src=url;m.style.display='flex';};
-window.closeUrlModal=()=>{document.getElementById('url-modal').style.display='none';document.getElementById('url-modal-frame').src='';};
+window.openUrlModal=(url,titulo)=>{ window.open(url,'_blank','noopener'); };
+window.closeUrlModal=()=>{};
 window.goToAlcado=key=>{const idx=S.alcados.findIndex(a=>a.key===key);if(idx>=0)goTo(idx);};
 
 /* ── Tabs ── */
