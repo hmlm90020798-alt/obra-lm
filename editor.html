@@ -1244,37 +1244,6 @@ function renderAnotacoes() {
       document.addEventListener('mouseup',onUp);
     });
 
-    // ── Pontos de controlo arrastáveis (só no modo anotar) ───
-    if (S.mode==='anotar') {
-      const pts = an.tipo==='dobrada'
-        ? [{k:'x1y1',cx:x1,cy:y1},{k:'xmym',cx:an.xm/100*W,cy:an.ym/100*H},{k:'x2y2',cx:x2,cy:y2}]
-        : [{k:'x1y1',cx:x1,cy:y1},{k:'x2y2',cx:x2,cy:y2}];
-
-      pts.forEach(({k,cx,cy}) => {
-        const ctrl = svgEl('circle',{cx,cy,r:'6',fill:cor,opacity:'.7',cursor:'move','class':'anot-ctrl'});
-        ctrl.addEventListener('mousedown', ev => {
-          ev.stopPropagation();
-          const onMove = mv => {
-            const img2 = document.getElementById('alcado-img');
-            const r2   = img2.getBoundingClientRect();
-            const nx   = +((mv.clientX-r2.left)/r2.width*100).toFixed(2);
-            const ny   = +((mv.clientY-r2.top)/r2.height*100).toFixed(2);
-            if (k==='x1y1') { an.x1=nx; an.y1=ny; }
-            else if (k==='x2y2') { an.x2=nx; an.y2=ny; }
-            else if (k==='xmym') { an.xm=nx; an.ym=ny; }
-            renderAnotacoes();
-          };
-          const onUp = () => {
-            document.removeEventListener('mousemove',onMove);
-            document.removeEventListener('mouseup',onUp);
-          };
-          document.addEventListener('mousemove',onMove);
-          document.addEventListener('mouseup',onUp);
-        });
-        g.appendChild(ctrl);
-      });
-    }
-
     svg.appendChild(g);
   });
 
