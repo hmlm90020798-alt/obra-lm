@@ -46,7 +46,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .nav-btn{width:30px;height:30px;border-radius:5px;background:var(--raised);border:1px solid var(--border);color:var(--text2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .nav-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
 .nav-btn:disabled{opacity:.28;cursor:default;}
-.nav-select{flex:1;background:var(--raised);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.72rem;padding:.28rem .5rem;border-radius:5px;outline:none;cursor:pointer;}
+.nav-select-wrap{flex:1;position:relative;}
+.nav-current{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem .65rem;background:var(--raised);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color .15s;user-select:none;}
+.nav-current:hover{border-color:var(--border2);}
+.nav-current.open{border-color:var(--accent);}
+.nav-current-name{font-size:.78rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.nav-current-idx{font-family:var(--mono);font-size:.62rem;color:var(--text3);flex-shrink:0;}
+.nav-current-arrow{color:var(--text3);font-size:.65rem;flex-shrink:0;transition:transform .2s;}
+.nav-current.open .nav-current-arrow{transform:rotate(180deg);}
+.nav-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:200;background:var(--surface);border:1px solid var(--border2);border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;max-height:280px;overflow-y:auto;}
+.nav-dropdown.open{display:block;animation:ddIn .15s cubic-bezier(.16,1,.3,1);}
+@keyframes ddIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.nav-dd-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .85rem;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--border);}
+.nav-dd-item:last-child{border-bottom:none;}
+.nav-dd-item:hover{background:var(--raised);}
+.nav-dd-item.active{background:var(--adim);}
+.nav-dd-num{font-family:var(--mono);font-size:.62rem;color:var(--text3);width:18px;flex-shrink:0;text-align:right;}
+.nav-dd-name{font-size:.8rem;font-weight:500;flex:1;}
+.nav-dd-check{color:var(--accent);font-size:.75rem;flex-shrink:0;}
 .nav-idx{font-family:var(--mono);font-size:.65rem;color:var(--text3);flex-shrink:0;min-width:28px;text-align:center;}
 
 /* ── STAGE ── */
@@ -166,8 +183,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 <div class="nav-bar" id="nav-bar">
   <button class="nav-btn" id="nav-prev" onclick="navSlide(-1)" disabled>‹</button>
-  <select class="nav-select" id="nav-sel" onchange="goTo(parseInt(this.value))"></select>
-  <span class="nav-idx" id="nav-idx">—</span>
+  <div class="nav-select-wrap" id="nav-wrap">
+    <div class="nav-current" id="nav-current" onclick="toggleNavDropdown()">
+      <span class="nav-current-name" id="nav-current-name">—</span>
+      <span class="nav-current-idx" id="nav-idx">—</span>
+      <span class="nav-current-arrow">▾</span>
+    </div>
+    <div class="nav-dropdown" id="nav-dropdown"></div>
+  </div>
   <button class="nav-btn" id="nav-next" onclick="navSlide(1)">›</button>
 </div>
 
@@ -309,18 +332,52 @@ function buildSlides() {
     }
     slide.appendChild(iw); wrap.appendChild(slide);
   });
-  const sel=document.getElementById('nav-sel');
-  sel.innerHTML=S.alcados.map((a,i)=>`<option value="${i}">${a.nome}</option>`).join('');
-  S.idx=0; updateNav();
+  S.idx=0; buildNavDropdown(); updateNav();
 }
 
 function updateNav() {
   const n=S.alcados.length;
-  document.getElementById('nav-sel').value=String(S.idx);
+  const a=S.alcados[S.idx];
+  document.getElementById('nav-current-name').textContent=a?.nome||'—';
   document.getElementById('nav-idx').textContent=n?`${S.idx+1}/${n}`:'—';
   document.getElementById('nav-prev').disabled=S.idx===0;
   document.getElementById('nav-next').disabled=S.idx>=n-1;
+  // Actualizar estado active no dropdown
+  document.querySelectorAll('.nav-dd-item').forEach((el,i)=>{
+    el.classList.toggle('active',i===S.idx);
+  });
 }
+
+function buildNavDropdown() {
+  const dd=document.getElementById('nav-dropdown');
+  dd.innerHTML=S.alcados.map((a,i)=>`
+    <div class="nav-dd-item${i===S.idx?' active':''}" onclick="goTo(${i});closeNavDropdown()">
+      <span class="nav-dd-num">${i+1}</span>
+      <span class="nav-dd-name">${a.nome}</span>
+      ${i===S.idx?'<span class="nav-dd-check">✓</span>':''}
+    </div>`).join('');
+}
+
+function toggleNavDropdown(){
+  const curr=document.getElementById('nav-current');
+  const dd=document.getElementById('nav-dropdown');
+  const isOpen=dd.classList.contains('open');
+  if (isOpen){closeNavDropdown();}
+  else{
+    buildNavDropdown();
+    dd.classList.add('open');
+    curr.classList.add('open');
+  }
+}
+function closeNavDropdown(){
+  document.getElementById('nav-dropdown').classList.remove('open');
+  document.getElementById('nav-current').classList.remove('open');
+}
+window.toggleNavDropdown=toggleNavDropdown;
+// Fechar ao clicar fora
+document.addEventListener('click',ev=>{
+  if (!ev.target.closest('#nav-wrap')) closeNavDropdown();
+});
 
 window.navSlide=dir=>goTo(S.idx+dir);
 window.goTo=function(idx){
