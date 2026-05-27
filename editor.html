@@ -421,6 +421,16 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     <div class="field"><label>Cota / Medida</label><input type="text" id="hs-cota" placeholder="ex: 266cm da parede esq."></div>
     <div class="field"><label>Info técnica</label><textarea id="hs-tec" rows="3" placeholder="Amperagem, instalação, notas…"></textarea></div>
     <div class="field"><label>Info cliente</label><textarea id="hs-cli" rows="2" placeholder="Descrição para o cliente…"></textarea></div>
+    <div class="field">
+      <label>Link externo (URL)</label>
+      <input type="text" id="hs-url" placeholder="https://leroymerlin.pt/produto/...">
+    </div>
+    <div class="field">
+      <label>Link para alçado</label>
+      <select id="hs-link-alcado" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.78rem;padding:.42rem .65rem;border-radius:4px;outline:none">
+        <option value="">— Nenhum —</option>
+      </select>
+    </div>
     <div class="rp-coords" id="rp-coords"></div>
     <label class="bib-check" id="bib-check-row"><input type="checkbox" id="hs-bib"> Guardar também na biblioteca</label>
     <div class="btn-row">
@@ -950,6 +960,7 @@ function openRp(editMode) {
     document.getElementById('hs-cota').value  = '';
     document.getElementById('hs-tec').value   = '';
     document.getElementById('hs-cli').value   = '';
+    document.getElementById('hs-url').value   = '';
     document.getElementById('hs-bib').checked = false;
     document.getElementById('rp-coords').textContent = S.pendingXY
       ? `x:${S.pendingXY.x}%  y:${S.pendingXY.y}%` : '';
@@ -957,6 +968,13 @@ function openRp(editMode) {
     setSz('m');
   }
   renderTipoGrid();
+  // Popular dropdown de alçados (excluindo o actual)
+  const selAlc = document.getElementById('hs-link-alcado');
+  if (selAlc) {
+    selAlc.innerHTML = '<option value="">— Nenhum —</option>' +
+      S.alcados.filter(a=>a.key!==S.activeKey)
+        .map(a=>`<option value="${a.key}">${a.nome}</option>`).join('');
+  }
 }
 window.closeRp = () => {
   document.getElementById('right').classList.remove('open');
@@ -1019,11 +1037,13 @@ window.setSz=setSz;
    HOTSPOTS — CRUD
 ══════════════════════════════════════════ */
 window.saveHs = () => {
-  const label = document.getElementById('hs-label').value.trim();
-  const cota  = document.getElementById('hs-cota').value.trim();
-  const tec   = document.getElementById('hs-tec').value.trim();
-  const cli   = document.getElementById('hs-cli').value.trim();
-  const toBib = document.getElementById('hs-bib').checked;
+  const label      = document.getElementById('hs-label').value.trim();
+  const cota       = document.getElementById('hs-cota').value.trim();
+  const tec        = document.getElementById('hs-tec').value.trim();
+  const cli        = document.getElementById('hs-cli').value.trim();
+  const url        = document.getElementById('hs-url').value.trim();
+  const linkAlcado = document.getElementById('hs-link-alcado').value;
+  const toBib      = document.getElementById('hs-bib').checked;
   if (!label) return toast('Insere um label','err');
 
   const key = S.activeKey;
@@ -1031,7 +1051,7 @@ window.saveHs = () => {
 
   if (S.editId) {
     const h = S.hotspots[key].find(x=>x.id===S.editId);
-    if (h) Object.assign(h, { label, cota, tec, cli, tipo:curTipo, pinSize:curSz });
+    if (h) Object.assign(h, { label, cota, tec, cli, url, linkAlcado, tipo:curTipo, pinSize:curSz });
     const bh = S.biblioteca.find(b=>b.id===h?.bibId);
     if (bh) Object.assign(bh, { label, cota, tec, cli, tipo:curTipo });
   } else {
@@ -1042,7 +1062,7 @@ window.saveHs = () => {
       S.biblioteca.push({ id:bibId, tipo:curTipo, label, cota, tec, cli });
       renderBib();
     }
-    S.hotspots[key].push({ id:'hs_'+Date.now(), x:S.pendingXY.x, y:S.pendingXY.y, tipo:curTipo, pinSize:curSz, label, cota, tec, cli, bibId });
+    S.hotspots[key].push({ id:'hs_'+Date.now(), x:S.pendingXY.x, y:S.pendingXY.y, tipo:curTipo, pinSize:curSz, label, cota, tec, cli, url, linkAlcado, bibId });
   }
 
   closeRp(); renderHsList(); renderMarkers(); renderAlcados();
@@ -1072,12 +1092,18 @@ window.editHs = id => {
   document.getElementById('hs-cota').value=h.cota||'';
   document.getElementById('hs-tec').value=h.tec||'';
   document.getElementById('hs-cli').value=h.cli||'';
+  document.getElementById('hs-url').value=h.url||'';
   document.getElementById('rp-coords').textContent=`x:${h.x}%  y:${h.y}%`;
   document.getElementById('rp-title').textContent='Editar Hotspot';
   selTipo(h.tipo||'tomada'); setSz(h.pinSize||'m');
   renderHsList();
   document.querySelectorAll('.mk').forEach(m=>m.classList.toggle('on',m.id==='mk-'+id));
   openRp(true);
+  // Restaurar linkAlcado após popular dropdown
+  setTimeout(()=>{
+    const selAlc=document.getElementById('hs-link-alcado');
+    if (selAlc && h.linkAlcado) selAlc.value=h.linkAlcado;
+  },50);
 };
 
 window.delHs = (id,e) => {

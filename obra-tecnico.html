@@ -215,6 +215,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   <button class="btab"        id="bt-conclusao"   onclick="switchTab('conclusao')">  <span class="btab-ico">✅</span>Conclusão</button>
 </div>
 
+<!-- Modal URL externo -->
+<div id="url-modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);flex-direction:column">
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 1rem;background:var(--surface);border-bottom:1px solid var(--border)">
+    <button onclick="closeUrlModal()" style="background:none;border:none;color:var(--text2);font-size:1rem;cursor:pointer;padding:.2rem .4rem">←</button>
+    <span id="url-modal-title" style="font-family:var(--mono);font-size:.72rem;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <a id="url-modal-open" href="#" target="_blank" style="font-family:var(--mono);font-size:.65rem;color:var(--accent);text-decoration:none;flex-shrink:0">↗ Abrir</a>
+  </div>
+  <iframe id="url-modal-frame" src="" style="flex:1;border:none;background:#fff"></iframe>
+</div>
 <div id="toast"></div>
 
 <script type="module">
@@ -407,6 +416,12 @@ function openPopup(h,pw,slideIdx) {
   const popup=document.createElement('div');
   popup.className='popup'; popup.id='popup';
 
+  // Construir botões de link
+  const alcadoDestino = h.linkAlcado ? S.alcados.find(a=>a.key===h.linkAlcado) : null;
+  const linkBtns = [];
+  if (h.url) linkBtns.push(`<button onclick="openUrlModal('${h.url.replace(/'/g,"\'")}','${h.label.replace(/'/g,"\'")}');closePopup()" style="display:flex;align-items:center;gap:.4rem;width:100%;padding:.42rem .65rem;background:var(--adim);border:1px solid rgba(79,124,255,.3);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:.7rem;cursor:pointer;transition:all .15s">🔗 Ver referência</button>`);
+  if (alcadoDestino) linkBtns.push(`<button onclick="goToAlcado('${h.linkAlcado}');closePopup()" style="display:flex;align-items:center;gap:.4rem;width:100%;padding:.42rem .65rem;background:var(--raised);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-family:var(--mono);font-size:.7rem;cursor:pointer;transition:all .15s">→ ${alcadoDestino.nome}</button>`);
+
   popup.innerHTML=`
     <div class="popup-header">
       <div class="popup-icon-wrap" style="background:${t.cor}22;border:1px solid ${t.cor}44">
@@ -421,7 +436,8 @@ function openPopup(h,pw,slideIdx) {
     <div class="popup-body">
       ${h.cota?`<div class="popup-field"><div class="popup-field-label">Cota</div><div class="popup-cota">📏 ${h.cota}</div></div>`:''}
       ${h.tec?`<div class="popup-field"><div class="popup-field-label">Informação técnica</div><div class="popup-field-value">${h.tec}</div></div>`:''}
-      ${!h.cota&&!h.tec?`<div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">Sem informação técnica.</div>`:''}
+      ${!h.cota&&!h.tec?`<div style="font-size:.72rem;color:var(--text3);font-family:var(--mono);margin-bottom:.4rem">Sem informação técnica.</div>`:''}
+      ${linkBtns.length?`<div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)">${linkBtns.join('')}</div>`:''}
     </div>`;
 
   // Posicionar popup
@@ -443,6 +459,23 @@ function closePopup(){
   S.activePopup=null;
 }
 window.closePopup=closePopup;
+
+window.openUrlModal=(url,titulo)=>{
+  const modal=document.getElementById('url-modal');
+  document.getElementById('url-modal-title').textContent=url;
+  document.getElementById('url-modal-open').href=url;
+  document.getElementById('url-modal-frame').src=url;
+  modal.style.display='flex';
+};
+window.closeUrlModal=()=>{
+  const modal=document.getElementById('url-modal');
+  modal.style.display='none';
+  document.getElementById('url-modal-frame').src='';
+};
+window.goToAlcado=key=>{
+  const idx=S.alcados.findIndex(a=>a.key===key);
+  if (idx>=0) goTo(idx);
+};
 stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
 
 /* ── ANOTAÇÕES ── */
