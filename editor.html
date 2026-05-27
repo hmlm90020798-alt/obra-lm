@@ -1134,9 +1134,9 @@ function svgEl(tag, attrs) {
   return el;
 }
 
-function svgLabel(g, tx, ty, texto, cor, offsetY=0) {
+function svgLabel(g, tx, ty, texto, cor, offsetY=0, dynFs=11) {
   if (!texto) return;
-  const fs=11, pad=5, ly=ty+offsetY;
+  const fs=dynFs, pad=Math.round(dynFs*.45), ly=ty+offsetY;
   const tw = Math.max(texto.length * fs * 0.62 + pad*2, 28);
   const th = fs + pad*2;
   // Fundo sólido para legibilidade em qualquer background
@@ -1194,8 +1194,13 @@ function renderAnotacoes() {
 
   const img = document.getElementById('alcado-img');
   if (!img) return;
-  const W = img.getBoundingClientRect().width  || img.clientWidth  || 800;
-  const H = img.getBoundingClientRect().height || img.clientHeight || 600;
+  const iRect = img.getBoundingClientRect();
+  const W = iRect.width  || 800;
+  const H = iRect.height || 600;
+  // Escalar espessura e texto com a imagem
+  const scale = W / 800;
+  const sw = Math.max(1.5, 2.5 * scale);
+  const fs = Math.max(9, Math.round(11 * scale));
   const anots = S.anotacoes[S.activeKey] || [];
 
   anots.forEach(an => {
@@ -1254,7 +1259,7 @@ function renderAnotacoes() {
       // Etiqueta a meio da seta, deslocada perpendicularmente
       if (an.texto) {
         const nnx=-ddy/dlen, nny=ddx/dlen;
-        svgLabel(g,(x1+x2)/2+nnx*22,(y1+y2)/2+nny*22,an.texto,cor);
+        svgLabel(g,(x1+x2)/2+nnx*22,(y1+y2)/2+nny*22,an.texto,cor,0,fs);
       }
       g.appendChild(svgDelBtn(an.id,(x1+x2)/2,(y1+y2)/2-16));
     }
@@ -1302,9 +1307,44 @@ function renderAnotacoes() {
 
     // ── TEXTO LIVRE ───────────────────────────────────────────
     if (an.tipo==='texto') {
-      svgLabel(g,x1,y1,an.texto,cor);
+      svgLabel(g,x1,y1,an.texto,cor,0,fs);
       g.appendChild(svgDelBtn(an.id,x1,y1-18));
     }
+
+    // ── Drag para mover toda a anotação ──────────────────────
+    g.style.cursor = 'move';
+    g.addEventListener('dblclick', ev => {
+      ev.stopPropagation();
+      const novoTexto = prompt('Editar texto:', an.texto || '');
+      if (novoTexto === null) return;
+      an.texto = novoTexto;
+      renderAnotacoes();
+    });
+    g.addEventListener('mousedown', ev => {
+      if (ev.target.closest('.anot-del-btn,.anot-ctrl')) return;
+      ev.stopPropagation();
+      const img2 = document.getElementById('alcado-img');
+      const r2   = img2.getBoundingClientRect();
+      const startX = ev.clientX, startY = ev.clientY;
+      const origX1=an.x1,origY1=an.y1,origX2=an.x2,origY2=an.y2;
+      const origXm=an.xm,origYm=an.ym;
+      let moved = false;
+      const onMove = mv => {
+        moved = true;
+        const dx = (mv.clientX-startX)/r2.width*100;
+        const dy = (mv.clientY-startY)/r2.height*100;
+        an.x1=+(origX1+dx).toFixed(2); an.y1=+(origY1+dy).toFixed(2);
+        an.x2=+(origX2+dx).toFixed(2); an.y2=+(origY2+dy).toFixed(2);
+        if (an.xm!==undefined) { an.xm=+(origXm+dx).toFixed(2); an.ym=+(origYm+dy).toFixed(2); }
+        renderAnotacoes();
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+      };
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+    });
 
     // ── Pontos de controlo arrastáveis (só no modo anotar) ───
     if (S.mode==='anotar') {

@@ -518,9 +518,9 @@ stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.targ
 
 /* ── ANOTAÇÕES ── */
 function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
-function svgLabelV(g,tx,ty,texto,cor,oY=0){
+function svgLabelV(g,tx,ty,texto,cor,oY=0,dynFs=11){
   if(!texto)return;
-  const fs=11,pad=5,ly=ty+oY;
+  const fs=dynFs,pad=Math.round(dynFs*.45),ly=ty+oY;
   const tw=Math.max(texto.length*fs*.62+pad*2,28),th=fs+pad*2;
   g.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'#1a1a1a',opacity:'.88'}));
   g.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'none',stroke:cor,'stroke-width':'1.5',opacity:'.9'}));
@@ -546,10 +546,13 @@ function renderAnotViewer(idx){
   while (svg.children.length>1) svg.removeChild(svg.lastChild);
   const img=document.querySelector(`#iw-${idx} img`);
   if (!img) return;
-  const W=img.getBoundingClientRect().width||800,H=img.getBoundingClientRect().height||600;
+  const iRv=img.getBoundingClientRect();
+  const W=iRv.width||800,H=iRv.height||600;
+  const scaleV=W/800;
+  const sw=String(Math.max(1.5,2.5*scaleV));
+  const fs=Math.max(9,Math.round(11*scaleV));
   const key=S.alcados[idx]?.key;
   const anots=S.anotacoes[key]||[];
-  const sw='1.8';
   anots.forEach(an=>{
     const x1=an.x1/100*W,y1=an.y1/100*H,x2=an.x2/100*W,y2=an.y2/100*H;
     const cor=an.cor||'#e8a234';
@@ -581,7 +584,7 @@ function renderAnotViewer(idx){
       const sdx=x2-x1,sdy=y2-y1,slen=Math.hypot(sdx,sdy)||1,sux=sdx/slen,suy=sdy/slen;
       g.appendChild(svgV('line',{x1,y1,x2:x2-sux*12,y2:y2-suy*12,stroke:cor,'stroke-width':'2.5','marker-end':`url(#${mId})`}));
       g.appendChild(svgV('circle',{cx:x1,cy:y1,r:'4',fill:cor}));
-      if (an.texto){const nnx=-sdy/slen,nny=sdx/slen;svgLabelV(g,(x1+x2)/2+nnx*22,(y1+y2)/2+nny*22,an.texto,cor);}
+      if (an.texto){const nnx=-sdy/slen,nny=sdx/slen;svgLabelV(g,(x1+x2)/2+nnx*22,(y1+y2)/2+nny*22,an.texto,cor,0,fs);}
     }
     if (an.tipo==='dobrada'){
       const xm=an.xm/100*W,ym=an.ym/100*H;
@@ -591,7 +594,7 @@ function renderAnotViewer(idx){
       g.appendChild(svgV('circle',{cx:x1,cy:y1,r:'3',fill:cor}));
       if (an.texto) svgLabelV(g,xm,ym,an.texto,cor,-14);
     }
-    if (an.tipo==='texto') svgLabelV(g,x1,y1,an.texto,cor);
+    if (an.tipo==='texto') svgLabelV(g,x1,y1,an.texto,cor,0,fs);
     svg.appendChild(g);
   });
 }
