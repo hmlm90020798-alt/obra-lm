@@ -343,12 +343,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
       <button class="mode-btn"    id="btn-colocar" onclick="setMode('colocar')">COLOCAR</button>
       <button class="mode-btn"    id="btn-anotar"  onclick="setMode('anotar')">ANOTAR</button>
     </div>
-    <div id="anot-tools" style="display:none;align-items:center;gap:.3rem;flex-wrap:wrap">
-      <button class="rot-btn anot-tool-btn" id="anot-cota"   onclick="setAnotTool('cota')"   style="font-size:.65rem;padding:.25rem .5rem">↔ Cota</button>
-      <button class="rot-btn anot-tool-btn" id="anot-seta"   onclick="setAnotTool('seta')"   style="font-size:.65rem;padding:.25rem .5rem">→ Seta</button>
-      <button class="rot-btn anot-tool-btn" id="anot-dobrada" onclick="setAnotTool('dobrada')" style="font-size:.65rem;padding:.25rem .5rem">⌐ Dobrada</button>
-      <button class="rot-btn anot-tool-btn" id="anot-angulo" onclick="setAnotTool('angulo')" style="font-size:.65rem;padding:.25rem .5rem">∠ Ângulo</button>
-      <button class="rot-btn anot-tool-btn" id="anot-texto"  onclick="setAnotTool('texto')"  style="font-size:.65rem;padding:.25rem .5rem">T Texto</button>
+    <div id="anot-tools" style="display:none;align-items:center;gap:.5rem">
+      <span style="font-size:.68rem;color:var(--text3)">Clica na imagem para colocar nota</span>
       <select id="anot-cor" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.65rem;padding:.25rem .4rem;border-radius:4px;outline:none">
         <option value="#e8a234">Âmbar</option>
         <option value="#f05252">Vermelho</option>
@@ -848,21 +844,9 @@ window.setMode = m => {
   if (svg) svg.style.pointerEvents = m==='ver' ? 'all' : 'none';
 };
 
-const ANOT_HINTS = {
-  cota:    '1º clique: início da cota  2º clique: fim',
-  seta:    '1º clique: origem  2º clique: ponta da seta',
-  dobrada: '1º clique: origem  2º clique: cotovelo  3º clique: destino',
-  angulo:  'Clica para posicionar o ângulo',
-  texto:   'Clica para colocar caixa de texto',
-};
 
-window.setAnotTool = tool => {
-  S.anotTool = tool; S.anotStep = null;
-  document.querySelectorAll('.anot-tool-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.getElementById('anot-'+tool);
-  if (btn) btn.classList.add('active');
-  document.getElementById('canvas-hint').textContent = ANOT_HINTS[tool] || '';
-};
+
+
 
 /* ══════════════════════════════════════════
    CANVAS — click / mousemove
@@ -890,52 +874,9 @@ document.getElementById('img-wrap').addEventListener('click', ev => {
     const x = +((ev.clientX-rect.left)/rect.width*100).toFixed(2);
     const y = +((ev.clientY-rect.top)/rect.height*100).toFixed(2);
     const cor = document.getElementById('anot-cor').value;
-    const tool = S.anotTool;
-
-    if (tool==='texto') {
-      const texto = prompt('Texto:');
-      if (!texto) return;
-      addAnotacao({ id:'an_'+Date.now(), tipo:'texto', x1:x, y1:y, x2:x, y2:y, texto, cor });
-      return;
-    }
-
-    if (tool==='angulo') {
-      const graus = prompt('Valor do ângulo (ex: 45°):');
-      if (!graus) return;
-      addAnotacao({ id:'an_'+Date.now(), tipo:'angulo', x1:x, y1:y, x2:x, y2:y, texto:graus, cor });
-      return;
-    }
-
-    if (tool==='cota' || tool==='seta') {
-      if (!S.anotStep) {
-        S.anotStep = { x1:x, y1:y, clicks:1 };
-        document.getElementById('canvas-hint').textContent = '2º clique: ' + (tool==='cota'?'fim da cota':'ponta da seta');
-        toast('Ponto 1 definido','ok');
-      } else {
-        const valor = prompt(tool==='cota'?'Valor da cota (ex: 200cm):':'Etiqueta (opcional):') || '';
-        addAnotacao({ id:'an_'+Date.now(), tipo:tool, x1:S.anotStep.x1, y1:S.anotStep.y1, x2:x, y2:y, texto:valor, cor });
-        S.anotStep = null;
-        document.getElementById('canvas-hint').textContent = ANOT_HINTS[tool]||'';
-      }
-      return;
-    }
-
-    if (tool==='dobrada') {
-      if (!S.anotStep) {
-        S.anotStep = { x1:x, y1:y, clicks:1 };
-        document.getElementById('canvas-hint').textContent = '2º clique: cotovelo da seta';
-        toast('Ponto 1 definido','ok');
-      } else if (S.anotStep.clicks===1) {
-        S.anotStep = { ...S.anotStep, xm:x, ym:y, clicks:2 };
-        document.getElementById('canvas-hint').textContent = '3º clique: destino final';
-        toast('Cotovelo definido','ok');
-      } else {
-        const texto = prompt('Etiqueta (opcional):') || '';
-        addAnotacao({ id:'an_'+Date.now(), tipo:'dobrada', x1:S.anotStep.x1, y1:S.anotStep.y1, xm:S.anotStep.xm, ym:S.anotStep.ym, x2:x, y2:y, texto, cor });
-        S.anotStep = null;
-        document.getElementById('canvas-hint').textContent = ANOT_HINTS['dobrada'];
-      }
-    }
+    const texto = prompt('Nota:');
+    if (!texto) return;
+    addAnotacao({ id:'an_'+Date.now(), tipo:'texto', x1:x, y1:y, x2:x, y2:y, texto, cor });
   }
 });
 
@@ -1205,111 +1146,12 @@ function renderAnotacoes() {
 
   anots.forEach(an => {
     const x1=an.x1/100*W, y1=an.y1/100*H;
-    const x2=an.x2/100*W, y2=an.y2/100*H;
     const cor = an.cor || '#e8a234';
-    const sw  = '1.8';
     const g   = svgEl('g',{'class':'anot-group','data-id':an.id});
 
-    // ── COTA (estilo CAD) ─────────────────────────────────────
-    if (an.tipo==='cota') {
-      const OFF=20; // offset da linha de cota
-      const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1;
-      const nx=-dy/len, ny=dx/len; // perpendicular
-      const ox=nx*OFF, oy=ny*OFF;
-      // Linhas de extensão (finas, ligeiramente além da linha de cota)
-      const ext=4;
-      g.appendChild(svgEl('line',{x1,y1,x2:x1+ox+nx*ext,y2:y1+oy+ny*ext,stroke:cor,'stroke-width':'1','stroke-dasharray':'none',opacity:'.7'}));
-      g.appendChild(svgEl('line',{x1:x2,y1:y2,x2:x2+ox+nx*ext,y2:y2+oy+ny*ext,stroke:cor,'stroke-width':'1',opacity:'.7'}));
-      // Linha de cota com setas abertas (CAD)
-      const mId='cad-'+an.id.replace(/\W/g,'');
-      if (!svg.querySelector('#'+mId)) {
-        const defs=svg.querySelector('defs');
-        // Seta aberta estilo CAD
-        ['s','e'].forEach((suf,i) => {
-          const m=svgEl('marker',{id:mId+suf,markerWidth:'10',markerHeight:'8',refX:i?'2':'8',refY:'4',orient:'auto'});
-          m.appendChild(svgEl('path',{d:i?'M10,0 L2,4 L10,8':'M0,0 L8,4 L0,8',stroke:cor,'stroke-width':'1.2',fill:'none','stroke-linecap':'round'}));
-          defs.appendChild(m);
-        });
-      }
-      g.appendChild(svgEl('line',{x1:x1+ox,y1:y1+oy,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':'1.5',
-        'marker-start':`url(#${mId}s)`,'marker-end':`url(#${mId}e)`}));
-      // Etiqueta centrada sobre a linha de cota
-      if (an.texto) {
-        const cx=(x1+x2)/2+ox, cy=(y1+y2)/2+oy;
-        // Deslocar etiqueta perpendicularmente à linha
-        svgLabel(g, cx+nx*10, cy+ny*10, an.texto, cor);
-      }
-      g.appendChild(svgDelBtn(an.id,(x1+x2)/2+ox,(y1+y2)/2+oy-14));
-    }
-
-    // ── SETA SIMPLES ──────────────────────────────────────────
-    if (an.tipo==='seta') {
-      const mId='ah'+an.id.replace(/[^a-z0-9]/gi,'');
-      if (!svg.querySelector('#'+mId)) {
-        const defs=svg.querySelector('defs');
-        const m=svgEl('marker',{id:mId,markerWidth:'12',markerHeight:'12',refX:'9',refY:'6',orient:'auto'});
-        m.appendChild(svgEl('path',{d:'M0,1 L0,11 L11,6 z',fill:cor}));
-        defs.appendChild(m);
-      }
-      const ddx=x2-x1,ddy=y2-y1,dlen=Math.hypot(ddx,ddy)||1;
-      const uux=ddx/dlen,uuy=ddy/dlen;
-      // Recuar linha para a ponta não ultrapassar o destino
-      g.appendChild(svgEl('line',{x1,y1,x2:x2-uux*12,y2:y2-uuy*12,stroke:cor,'stroke-width':'2.5','marker-end':`url(#${mId})`}));
-      g.appendChild(svgEl('circle',{cx:x1,cy:y1,r:'4',fill:cor}));
-      // Etiqueta a meio da seta, deslocada perpendicularmente
-      if (an.texto) {
-        const nnx=-ddy/dlen, nny=ddx/dlen;
-        svgLabel(g,(x1+x2)/2+nnx*22,(y1+y2)/2+nny*22,an.texto,cor,0,fs);
-      }
-      g.appendChild(svgDelBtn(an.id,(x1+x2)/2,(y1+y2)/2-16));
-    }
-
-    // ── SETA DOBRADA ──────────────────────────────────────────
-    if (an.tipo==='dobrada') {
-      const xm=an.xm/100*W, ym=an.ym/100*H;
-      const mId='ahd-'+an.id.replace(/[^a-z0-9]/g,'');
-      if (!svg.querySelector('#'+mId)) {
-        const defs=svg.querySelector('defs');
-        const m=svgEl('marker',{id:mId,markerWidth:'8',markerHeight:'8',refX:'6',refY:'3',orient:'auto'});
-        m.appendChild(svgEl('path',{d:'M0,0 L0,6 L8,3 z',fill:cor}));
-        defs.appendChild(m);
-      }
-      const poly=svgEl('polyline',{points:`${x1},${y1} ${xm},${ym} ${x2},${y2}`,stroke:cor,'stroke-width':sw,fill:'none','marker-end':`url(#${mId})`});
-      g.appendChild(poly);
-      g.appendChild(svgEl('circle',{cx:x1,cy:y1,r:'3',fill:cor}));
-      if (an.texto) svgLabel(g,xm,ym,an.texto,cor,-14);
-      g.appendChild(svgDelBtn(an.id,xm,ym+14));
-    }
-
-    // ── ÂNGULO ────────────────────────────────────────────────
-    if (an.tipo==='angulo') {
-      const R=32;
-      const graus=parseFloat(an.texto)||45;
-      const rad=graus*Math.PI/180;
-      const startA=-Math.PI/4; // orientação base
-      const endA=startA+rad;
-      const sx=x1+R*Math.cos(startA), sy=y1+R*Math.sin(startA);
-      const ex=x1+R*Math.cos(endA),   ey=y1+R*Math.sin(endA);
-      const large=graus>180?1:0;
-      // Braços
-      g.appendChild(svgEl('line',{x1,y1,x2:sx,y2:sy,stroke:cor,'stroke-width':sw}));
-      g.appendChild(svgEl('line',{x1,y1,x2:ex,y2:ey,stroke:cor,'stroke-width':sw}));
-      // Arco
-      g.appendChild(svgEl('path',{d:`M${sx},${sy} A${R},${R} 0 ${large},1 ${ex},${ey}`,stroke:cor,'stroke-width':sw,fill:'none'}));
-      // Vértice
-      g.appendChild(svgEl('circle',{cx:x1,cy:y1,r:'3',fill:cor}));
-      // Etiqueta centrada no arco
-      const midA=(startA+endA)/2;
-      const lx=x1+(R+16)*Math.cos(midA), ly=y1+(R+16)*Math.sin(midA);
-      svgLabel(g,lx,ly,an.texto,cor);
-      g.appendChild(svgDelBtn(an.id,x1,y1-20));
-    }
-
-    // ── TEXTO LIVRE ───────────────────────────────────────────
-    if (an.tipo==='texto') {
-      svgLabel(g,x1,y1,an.texto,cor,0,fs);
-      g.appendChild(svgDelBtn(an.id,x1,y1-18));
-    }
+    // ── NOTA DE TEXTO ─────────────────────────────────────────
+    svgLabel(g, x1, y1, an.texto, cor, 0, fs);
+    g.appendChild(svgDelBtn(an.id, x1, y1-18));
 
     // ── Drag para mover toda a anotação ──────────────────────
     g.style.cursor = 'move';

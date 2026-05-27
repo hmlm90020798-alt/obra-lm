@@ -554,49 +554,12 @@ function renderAnotViewer(idx){
   const key=S.alcados[idx]?.key;
   const anots=S.anotacoes[key]||[];
   anots.forEach(an=>{
-    const x1=an.x1/100*W,y1=an.y1/100*H,x2=an.x2/100*W,y2=an.y2/100*H;
+    const x1=an.x1/100*W, y1=an.y1/100*H;
     const cor=an.cor||'#e8a234';
     const g=svgV('g',{});
-    if (an.tipo==='cota'){
-      const OFF=20,dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len,ox=nx*OFF,oy=ny*OFF;
-      g.appendChild(svgV('line',{x1,y1,x2:x1+ox,y2:y1+oy,stroke:cor,'stroke-width':'1',opacity:'.6'}));
-      g.appendChild(svgV('line',{x1:x2,y1:y2,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':'1',opacity:'.6'}));
-      const mId='cadv'+idx+an.id.replace(/[^a-z0-9]/gi,'');
-      if (!svg.querySelector('#'+mId+'s')){
-        const defs=svg.querySelector('defs');
-        [['s','M10,0 L2,4 L10,8','8'],['e','M0,0 L8,4 L0,8','2']].forEach(([sf,d,rx])=>{
-          const m=svgV('marker',{id:mId+sf,markerWidth:'10',markerHeight:'8',refX:rx,refY:'4',orient:'auto'});
-          m.appendChild(svgV('path',{d,stroke:cor,'stroke-width':'1.2',fill:'none','stroke-linecap':'round'}));
-          defs.appendChild(m);
-        });
-      }
-      g.appendChild(svgV('line',{x1:x1+ox,y1:y1+oy,x2:x2+ox,y2:y2+oy,stroke:cor,'stroke-width':sw,'marker-start':`url(#${mId}s)`,'marker-end':`url(#${mId}e)`}));
-      if (an.texto){svgLabelV(g,(x1+x2)/2+ox+nx*10,(y1+y2)/2+oy+ny*10,an.texto,cor);}
-    }
-    if (an.tipo==='seta'){
-      const mId='ahsv'+idx+an.id.replace(/[^a-z0-9]/gi,'');
-      if (!svg.querySelector('#'+mId)){
-        const defs=svg.querySelector('defs');
-        const m=svgV('marker',{id:mId,markerWidth:'12',markerHeight:'12',refX:'9',refY:'6',orient:'auto'});
-        m.appendChild(svgV('path',{d:'M0,1 L0,11 L11,6 z',fill:cor}));
-        defs.appendChild(m);
-      }
-      const sdx=x2-x1,sdy=y2-y1,slen=Math.hypot(sdx,sdy)||1,sux=sdx/slen,suy=sdy/slen;
-      g.appendChild(svgV('line',{x1,y1,x2:x2-sux*12,y2:y2-suy*12,stroke:cor,'stroke-width':'2.5','marker-end':`url(#${mId})`}));
-      g.appendChild(svgV('circle',{cx:x1,cy:y1,r:'4',fill:cor}));
-      if (an.texto){const nnx=-sdy/slen,nny=sdx/slen;svgLabelV(g,(x1+x2)/2+nnx*22,(y1+y2)/2+nny*22,an.texto,cor,0,fs);}
-    }
-    if (an.tipo==='dobrada'){
-      const xm=an.xm/100*W,ym=an.ym/100*H;
-      const mId='ahd'+idx+an.id.replace(/[^a-z0-9]/gi,'');
-      if (!svg.querySelector('#'+mId)){const defs=svg.querySelector('defs');const m=svgV('marker',{id:mId,markerWidth:'8',markerHeight:'8',refX:'6',refY:'3',orient:'auto'});m.appendChild(svgV('path',{d:'M0,0 L0,6 L8,3 z',fill:cor}));defs.appendChild(m);}
-      g.appendChild(svgV('polyline',{points:`${x1},${y1} ${xm},${ym} ${x2},${y2}`,stroke:cor,'stroke-width':sw,fill:'none','marker-end':`url(#${mId})`}));
-      g.appendChild(svgV('circle',{cx:x1,cy:y1,r:'3',fill:cor}));
-      if (an.texto) svgLabelV(g,xm,ym,an.texto,cor,-14);
-    }
-    if (an.tipo==='texto') svgLabelV(g,x1,y1,an.texto,cor,0,fs);
+    svgLabelV(g,x1,y1,an.texto,cor,0,fs);
     svg.appendChild(g);
-  });
+  });;
 }
 
 function renderLegenda(idx){
