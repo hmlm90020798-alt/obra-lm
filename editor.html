@@ -343,8 +343,18 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
       <button class="mode-btn"    id="btn-colocar" onclick="setMode('colocar')">COLOCAR</button>
       <button class="mode-btn"    id="btn-anotar"  onclick="setMode('anotar')">ANOTAR</button>
     </div>
-    <div id="anot-tools" style="display:none;align-items:center;gap:.5rem">
-      <span style="font-size:.68rem;color:var(--text3)">Clica na imagem para colocar nota</span>
+    <div id="anot-tools" style="display:none;align-items:center;gap:.45rem;flex-wrap:wrap">
+      <span style="font-size:.65rem;color:var(--text3);font-family:var(--mono)">Clica para colocar</span>
+      <div style="display:flex;gap:.25rem">
+        <button id="anot-sz-s" class="rot-btn" onclick="setAnotSz('s')" style="font-size:.62rem;padding:.22rem .45rem;min-width:28px">S</button>
+        <button id="anot-sz-m" class="rot-btn" onclick="setAnotSz('m')" style="font-size:.62rem;padding:.22rem .45rem;min-width:28px;background:var(--accent);color:#fff;border-color:var(--accent)">M</button>
+        <button id="anot-sz-l" class="rot-btn" onclick="setAnotSz('l')" style="font-size:.62rem;padding:.22rem .45rem;min-width:28px">L</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:.3rem">
+        <button class="rot-btn" onclick="adjustAnotRot(-15)" style="font-size:.7rem;padding:.22rem .4rem" title="Rodar -15°">↺</button>
+        <span id="anot-rot-val" style="font-family:var(--mono);font-size:.62rem;color:var(--text3);min-width:28px;text-align:center">0°</span>
+        <button class="rot-btn" onclick="adjustAnotRot(15)"  style="font-size:.7rem;padding:.22rem .4rem" title="Rodar +15°">↻</button>
+      </div>
       <select id="anot-cor" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.65rem;padding:.25rem .4rem;border-radius:4px;outline:none">
         <option value="#e8a234">Âmbar</option>
         <option value="#f05252">Vermelho</option>
@@ -556,8 +566,11 @@ const S = {
   imgCache: {},  // { key: base64 }
   anotacoes: {}, // { key: [{ id, tipo, x1,y1, x2,y2, texto, cor }] }
   mode: 'ver',
-  anotTool: 'seta',   // 'seta' | 'texto'
-  anotStep: null,     // null | { x1, y1 } — aguarda segundo clique para seta
+  anotTool: 'texto',
+  anotStep: null,
+  anotSz: 'm',
+  anotRot: 0,
+  selAnotId: null,
   rotation: 0,
   editId: null,
   pendingXY: null,
@@ -827,6 +840,33 @@ window.confirmarRotacao = () => {
 /* ══════════════════════════════════════════
    MODO
 ══════════════════════════════════════════ */
+window.setAnotSz = sz => {
+  S.anotSz = sz;
+  ['s','m','l'].forEach(s => {
+    const btn = document.getElementById('anot-sz-'+s);
+    if (!btn) return;
+    const isSel = s === sz;
+    btn.style.background    = isSel ? 'var(--accent)' : '';
+    btn.style.color         = isSel ? '#fff' : '';
+    btn.style.borderColor   = isSel ? 'var(--accent)' : '';
+  });
+  // Se há anotação seleccionada, actualizar
+  if (S.selAnotId) {
+    const an = (S.anotacoes[S.activeKey]||[]).find(a=>a.id===S.selAnotId);
+    if (an) { an.sz = sz; renderAnotacoes(); }
+  }
+};
+
+window.adjustAnotRot = delta => {
+  S.anotRot = ((S.anotRot + delta) % 360 + 360) % 360;
+  document.getElementById('anot-rot-val').textContent = S.anotRot + '°';
+  // Se há anotação seleccionada, actualizar
+  if (S.selAnotId) {
+    const an = (S.anotacoes[S.activeKey]||[]).find(a=>a.id===S.selAnotId);
+    if (an) { an.rot = S.anotRot; renderAnotacoes(); }
+  }
+};
+
 window.setMode = m => {
   S.mode = m;
   S.anotStep = null;
@@ -852,6 +892,10 @@ window.setMode = m => {
    CANVAS — click / mousemove
 ══════════════════════════════════════════ */
 document.getElementById('img-wrap').addEventListener('click', ev => {
+  if (S.mode==='anotar' && !ev.target.closest('.anot-group')) {
+    S.selAnotId = null;
+    renderAnotacoes();
+  }
   if (S.mode==='colocar') {
     if (!S.activeKey) return toast('Selecciona um alçado','err');
     const a = S.alcados.find(x=>x.key===S.activeKey);
@@ -876,7 +920,7 @@ document.getElementById('img-wrap').addEventListener('click', ev => {
     const cor = document.getElementById('anot-cor').value;
     const texto = prompt('Nota:');
     if (!texto) return;
-    addAnotacao({ id:'an_'+Date.now(), tipo:'texto', x1:x, y1:y, x2:x, y2:y, texto, cor });
+    addAnotacao({ id:'an_'+Date.now(), tipo:'texto', x1:x, y1:y, x2:x, y2:y, texto, cor, sz:S.anotSz, rot:S.anotRot });
   }
 });
 
@@ -1075,30 +1119,20 @@ function svgEl(tag, attrs) {
   return el;
 }
 
-function svgLabel(g, tx, ty, texto, cor, offsetY=0, dynFs=11) {
+const ANOT_FS = { s:9, m:12, l:16 };
+
+function svgLabel(g, tx, ty, texto, cor, offsetY=0, dynFs=12, rot=0) {
   if (!texto) return;
   const fs=dynFs, pad=Math.round(dynFs*.45), ly=ty+offsetY;
   const tw = Math.max(texto.length * fs * 0.62 + pad*2, 28);
   const th = fs + pad*2;
-  // Fundo sólido para legibilidade em qualquer background
-  const bg=svgEl('rect',{
-    x:tx-tw/2, y:ly-th/2, width:tw, height:th, rx:'4',
-    fill:'#1a1a1a', opacity:'.88',
-  });
-  g.appendChild(bg);
-  // Borda colorida subtil
-  const border=svgEl('rect',{
-    x:tx-tw/2, y:ly-th/2, width:tw, height:th, rx:'4',
-    fill:'none', stroke:cor, 'stroke-width':'1.5', opacity:'.9',
-  });
-  g.appendChild(border);
-  // Texto
-  const t=svgEl('text',{
-    x:tx, y:ly+1, 'text-anchor':'middle', 'dominant-baseline':'middle',
-    fill:cor, 'font-size':fs, 'font-family':'DM Mono,monospace', 'font-weight':'600',
-    'class':'anot-text',
-  });
-  t.textContent=texto; g.appendChild(t);
+  // Grupo com rotação centrada na caixa
+  const grp = svgEl('g', rot ? {transform:`rotate(${rot},${tx},${ly})`} : {});
+  grp.appendChild(svgEl('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'#1a1a1a',opacity:'.9'}));
+  grp.appendChild(svgEl('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'none',stroke:cor,'stroke-width':'1.5'}));
+  const t=svgEl('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600','class':'anot-text'});
+  t.textContent=texto; grp.appendChild(t);
+  g.appendChild(grp);
 }
 
 function svgDelBtn(id, dx, dy) {
@@ -1150,11 +1184,33 @@ function renderAnotacoes() {
     const g   = svgEl('g',{'class':'anot-group','data-id':an.id});
 
     // ── NOTA DE TEXTO ─────────────────────────────────────────
-    svgLabel(g, x1, y1, an.texto, cor, 0, fs);
+    const anotFs = Math.round((ANOT_FS[an.sz||'m'] || ANOT_FS.m) * scale);
+    const anotRot = an.rot || 0;
+    svgLabel(g, x1, y1, an.texto, cor, 0, Math.max(9, anotFs), anotRot);
+    // Highlight se seleccionada
+    if (S.selAnotId === an.id) {
+      const hw = Math.max(an.texto.length * anotFs * 0.62 + 10, 28);
+      const hh = anotFs + 10;
+      const hi = svgEl('rect',{x:x1-hw/2-2,y:y1-hh/2-2,width:hw+4,height:hh+4,rx:'6',fill:'none',stroke:'rgba(255,255,255,.4)','stroke-width':'1.5','stroke-dasharray':'4,2'});
+      if (anotRot) hi.setAttribute('transform',`rotate(${anotRot},${x1},${y1})`);
+      g.appendChild(hi);
+    }
     g.appendChild(svgDelBtn(an.id, x1, y1-18));
 
     // ── Drag para mover toda a anotação ──────────────────────
     g.style.cursor = 'move';
+    // Click simples — seleccionar e sincronizar controlos
+    g.addEventListener('click', ev => {
+      if (ev.target.closest('.anot-del-btn')) return;
+      ev.stopPropagation();
+      S.selAnotId = an.id;
+      S.anotSz  = an.sz  || 'm';
+      S.anotRot = an.rot || 0;
+      setAnotSz(S.anotSz);
+      document.getElementById('anot-rot-val').textContent = S.anotRot + '°';
+      renderAnotacoes();
+    });
+    // Duplo clique — editar texto
     g.addEventListener('dblclick', ev => {
       ev.stopPropagation();
       const novoTexto = prompt('Editar texto:', an.texto || '');

@@ -518,14 +518,16 @@ stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.targ
 
 /* ── ANOTAÇÕES ── */
 function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
-function svgLabelV(g,tx,ty,texto,cor,oY=0,dynFs=11){
+const ANOT_FS_V={s:9,m:12,l:16};
+function svgLabelV(g,tx,ty,texto,cor,oY=0,dynFs=12,rot=0){
   if(!texto)return;
   const fs=dynFs,pad=Math.round(dynFs*.45),ly=ty+oY;
   const tw=Math.max(texto.length*fs*.62+pad*2,28),th=fs+pad*2;
-  g.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'#1a1a1a',opacity:'.88'}));
-  g.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'none',stroke:cor,'stroke-width':'1.5',opacity:'.9'}));
+  const grp=svgV('g',rot?{transform:`rotate(${rot},${tx},${ly})`}:{});
+  grp.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'#1a1a1a',opacity:'.9'}));
+  grp.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'none',stroke:cor,'stroke-width':'1.5'}));
   const t=svgV('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600'});
-  t.textContent=texto;g.appendChild(t);
+  t.textContent=texto;grp.appendChild(t);g.appendChild(grp);
 }
 
 function syncAnotSVG(idx){
@@ -557,7 +559,8 @@ function renderAnotViewer(idx){
     const x1=an.x1/100*W, y1=an.y1/100*H;
     const cor=an.cor||'#e8a234';
     const g=svgV('g',{});
-    svgLabelV(g,x1,y1,an.texto,cor,0,fs);
+    const anotFsV=Math.max(9,Math.round((ANOT_FS_V[an.sz||'m']||12)*scaleV));
+    svgLabelV(g,x1,y1,an.texto,cor,0,anotFsV,an.rot||0);
     svg.appendChild(g);
   });;
 }
