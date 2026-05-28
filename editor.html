@@ -169,6 +169,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .img-wrap.anotando { cursor: crosshair; }
 .anot-ctrl { transition: opacity .2s; }
 .anot-group:hover .anot-ctrl { opacity: .9 !important; }
+.anot-pulse { animation: anotPulse 2s ease-out infinite; }
+@keyframes anotPulse { 0%{transform-origin:center;transform:scale(.7);opacity:.3;} 70%{transform:scale(2);opacity:0;} 100%{transform:scale(2);opacity:0;} }
+.anot-popup { display: none; }
+.anot-group:hover .anot-popup,
+.anot-group.sel .anot-popup { display: block; }
 .anot-tool-btn.active { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
 .mk svg { display: block; cursor: grab; transition: transform .15s, filter .15s; filter: drop-shadow(0 2px 5px rgba(0,0,0,.7)); }
 .mk svg:hover { transform: scale(1.18); filter: drop-shadow(0 2px 5px rgba(0,0,0,.7)) drop-shadow(0 0 6px rgba(255,255,255,.2)); }
@@ -1119,20 +1124,36 @@ function svgEl(tag, attrs) {
   return el;
 }
 
-const ANOT_FS = { s:9, m:12, l:16 };
+function svgDot(g, tx, ty, cor, r=6) {
+  // Ponto externo pulsante
+  g.appendChild(svgEl('circle',{cx:tx,cy:ty,r:String(r+3),fill:cor,opacity:'.18','class':'anot-pulse'}));
+  // Ponto principal
+  g.appendChild(svgEl('circle',{cx:tx,cy:ty,r:String(r),fill:cor,opacity:'.9','class':'anot-dot'}));
+}
 
-function svgLabel(g, tx, ty, texto, cor, offsetY=0, dynFs=12, rot=0) {
+function svgPopupLabel(g, tx, ty, texto, cor, fs=12, rot=0) {
   if (!texto) return;
-  const fs=dynFs, pad=Math.round(dynFs*.45), ly=ty+offsetY;
-  const tw = Math.max(texto.length * fs * 0.62 + pad*2, 28);
+  const pad=Math.round(fs*.45), ly=ty;
+  const tw = Math.max(texto.length * fs * 0.62 + pad*2, 36);
   const th = fs + pad*2;
-  // Grupo com rotação centrada na caixa
-  const grp = svgEl('g', rot ? {transform:`rotate(${rot},${tx},${ly})`} : {});
-  grp.appendChild(svgEl('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'#1a1a1a',opacity:'.9'}));
-  grp.appendChild(svgEl('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'none',stroke:cor,'stroke-width':'1.5'}));
-  const t=svgEl('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600','class':'anot-text'});
+  // Popup — posicionar acima do ponto
+  const py = ty - th/2 - 12;
+  const grp = svgEl('g', {'class':'anot-popup'});
+  if (rot) grp.setAttribute('transform',`rotate(${rot},${tx},${ty})`);
+  // Cauda do popup
+  grp.appendChild(svgEl('path',{d:`M${tx-5},${py+th/2} L${tx},${py+th/2+7} L${tx+5},${py+th/2}`,fill:'#1e2030',stroke:cor,'stroke-width':'1','stroke-linejoin':'round'}));
+  // Caixa
+  grp.appendChild(svgEl('rect',{x:tx-tw/2,y:py-th/2,width:tw,height:th,rx:'5',fill:'#1e2030',stroke:cor,'stroke-width':'1.5'}));
+  // Texto
+  const t=svgEl('text',{x:tx,y:py+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600'});
   t.textContent=texto; grp.appendChild(t);
   g.appendChild(grp);
+}
+
+function svgLabel(g, tx, ty, texto, cor, offsetY=0, dynFs=12, rot=0) {
+  // No editor modo ANOTAR — mostrar sempre
+  svgDot(g, tx, ty+offsetY, cor, Math.max(5, dynFs*0.4));
+  svgPopupLabel(g, tx, ty+offsetY, texto, cor, dynFs, rot);
 }
 
 function svgDelBtn(id, dx, dy) {
@@ -1183,19 +1204,15 @@ function renderAnotacoes() {
     const cor = an.cor || '#e8a234';
     const g   = svgEl('g',{'class':'anot-group','data-id':an.id});
 
-    // ── NOTA DE TEXTO ─────────────────────────────────────────
-    const anotFs = Math.max(8, Math.round((an.fontSz || 12) * scale));
+    // ── NOTA DE TEXTO — ponto + popup ────────────────────────
+    const anotFs  = Math.max(8, Math.round((an.fontSz || 12) * scale));
     const anotRot = an.rot || 0;
-    svgLabel(g, x1, y1, an.texto, cor, 0, Math.max(9, anotFs), anotRot);
-    // Highlight se seleccionada
-    if (S.selAnotId === an.id) {
-      const hw = Math.max(an.texto.length * anotFs * 0.62 + 10, 28);
-      const hh = anotFs + 10;
-      const hi = svgEl('rect',{x:x1-hw/2-2,y:y1-hh/2-2,width:hw+4,height:hh+4,rx:'6',fill:'none',stroke:'rgba(255,255,255,.4)','stroke-width':'1.5','stroke-dasharray':'4,2'});
-      if (anotRot) hi.setAttribute('transform',`rotate(${anotRot},${x1},${y1})`);
-      g.appendChild(hi);
-    }
-    g.appendChild(svgDelBtn(an.id, x1, y1-18));
+    const dotR    = Math.max(5, Math.round(anotFs * 0.45));
+    // Se seleccionada — popup sempre visível (adicionar classe sel)
+    if (S.selAnotId === an.id) g.classList.add('sel');
+    svgDot(g, x1, y1, cor, dotR);
+    svgPopupLabel(g, x1, y1, an.texto, cor, anotFs, anotRot);
+    g.appendChild(svgDelBtn(an.id, x1, y1-dotR-12));
 
     // ── Drag para mover toda a anotação ──────────────────────
     g.style.cursor = 'move';

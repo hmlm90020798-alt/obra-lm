@@ -76,8 +76,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .img-wrap{position:relative;display:inline-block;line-height:0;max-width:100%;max-height:100%;}
 .img-wrap img{display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;}
 .img-wrap.planta img{filter:invert(1) brightness(.88) contrast(1.05);}
-.anot-svg{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;}
+.anot-svg{position:absolute;top:0;left:0;pointer-events:all;overflow:visible;}
 .anot-text{font-family:'DM Mono',monospace;}
+.anot-pulse{animation:anotPulse 2s ease-out infinite;}
+@keyframes anotPulse{0%{transform-origin:center;transform:scale(.7);opacity:.3;}70%{transform:scale(2);opacity:0;}100%{transform:scale(2);opacity:0;}}
+.anot-popup{display:none;pointer-events:none;}
+.anot-group:hover .anot-popup{display:block;}
+.anot-group{cursor:pointer;}
 
 /* ── HOTSPOT PINS — pulsação ── */
 .pin-wrap{position:absolute;transform:translate(-50%,-50%);z-index:20;-webkit-tap-highlight-color:transparent;cursor:pointer;}
@@ -518,16 +523,22 @@ stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.targ
 
 /* ── ANOTAÇÕES ── */
 function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
-const ANOT_FS_V={s:9,m:12,l:16};
 function svgLabelV(g,tx,ty,texto,cor,oY=0,dynFs=12,rot=0){
   if(!texto)return;
-  const fs=dynFs,pad=Math.round(dynFs*.45),ly=ty+oY;
-  const tw=Math.max(texto.length*fs*.62+pad*2,28),th=fs+pad*2;
-  const grp=svgV('g',rot?{transform:`rotate(${rot},${tx},${ly})`}:{});
-  grp.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'#1a1a1a',opacity:'.9'}));
-  grp.appendChild(svgV('rect',{x:tx-tw/2,y:ly-th/2,width:tw,height:th,rx:'4',fill:'none',stroke:cor,'stroke-width':'1.5'}));
-  const t=svgV('text',{x:tx,y:ly+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600'});
-  t.textContent=texto;grp.appendChild(t);g.appendChild(grp);
+  const ly=ty+oY, fs=dynFs;
+  const dotR=Math.max(5,Math.round(fs*.45));
+  // Ponto pulsante
+  g.appendChild(svgV('circle',{cx:tx,cy:ly,r:String(dotR+3),fill:cor,opacity:'.18','class':'anot-pulse'}));
+  g.appendChild(svgV('circle',{cx:tx,cy:ly,r:String(dotR),fill:cor,opacity:'.9'}));
+  // Popup acima
+  const pad=Math.round(fs*.45),tw=Math.max(texto.length*fs*.62+pad*2,36),th=fs+pad*2;
+  const py=ly-th/2-12;
+  const popup=svgV('g',{'class':'anot-popup'});
+  if(rot) popup.setAttribute('transform',`rotate(${rot},${tx},${ly})`);
+  popup.appendChild(svgV('path',{d:`M${tx-5},${py+th/2} L${tx},${py+th/2+7} L${tx+5},${py+th/2}`,fill:'#1e2030',stroke:cor,'stroke-width':'1','stroke-linejoin':'round'}));
+  popup.appendChild(svgV('rect',{x:tx-tw/2,y:py-th/2,width:tw,height:th,rx:'5',fill:'#1e2030',stroke:cor,'stroke-width':'1.5'}));
+  const t=svgV('text',{x:tx,y:py+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600'});
+  t.textContent=texto; popup.appendChild(t); g.appendChild(popup);
 }
 
 function syncAnotSVG(idx){
@@ -558,7 +569,7 @@ function renderAnotViewer(idx){
   anots.forEach(an=>{
     const x1=an.x1/100*W, y1=an.y1/100*H;
     const cor=an.cor||'#e8a234';
-    const g=svgV('g',{});
+    const g=svgV('g',{'class':'anot-group'});
     const anotFsV=Math.max(8,Math.round((an.fontSz||12)*scaleV));
     svgLabelV(g,x1,y1,an.texto,cor,0,anotFsV,an.rot||0);
     svg.appendChild(g);
