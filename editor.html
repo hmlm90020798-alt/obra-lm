@@ -169,8 +169,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .img-wrap.anotando { cursor: crosshair; }
 .anot-ctrl { transition: opacity .2s; }
 .anot-group:hover .anot-ctrl { opacity: .9 !important; }
-.anot-pulse { animation: anotPulse 2s ease-out infinite; }
-@keyframes anotPulse { 0%{transform-origin:center;transform:scale(.7);opacity:.3;} 70%{transform:scale(2);opacity:0;} 100%{transform:scale(2);opacity:0;} }
+.anot-pulse { animation: anotPulse 3s ease-out infinite; }
+@keyframes anotPulse { 0%{transform-origin:center;transform:scale(1);opacity:.25;} 60%{transform:scale(1.7);opacity:0;} 100%{transform:scale(1.7);opacity:0;} }
 .anot-popup { display: none; }
 .anot-group:hover .anot-popup,
 .anot-group.sel .anot-popup { display: block; }
