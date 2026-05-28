@@ -559,7 +559,7 @@ function renderAnotViewer(idx){
     const x1=an.x1/100*W, y1=an.y1/100*H;
     const cor=an.cor||'#e8a234';
     const g=svgV('g',{});
-    const anotFsV=Math.max(9,Math.round((ANOT_FS_V[an.sz||'m']||12)*scaleV));
+    const anotFsV=Math.max(8,Math.round((an.fontSz||12)*scaleV));
     svgLabelV(g,x1,y1,an.texto,cor,0,anotFsV,an.rot||0);
     svg.appendChild(g);
   });;
