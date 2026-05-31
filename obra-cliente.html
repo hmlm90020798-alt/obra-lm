@@ -455,7 +455,7 @@ function openPopup(h,pw,slideIdx){
   const py=iRect.top-stRect.top+(h.y/100)*iRect.height;
   popup.style.cssText=`position:absolute;left:${Math.min(px+14,stRect.width-232)}px;top:${py+160+20>stRect.height?Math.max(4,py-160-10):py+14}px`;
   stage.appendChild(popup); S.popup={id:h.id};
-  if(h.linha) showDestaque(h,slideIdx);
+  if(h.linhas?.length||h.linha) showDestaque(h,slideIdx);
 }
 S._destaqueH=null; S._destaqueIdx=null;
 function renderDestaque(){

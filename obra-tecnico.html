@@ -516,7 +516,7 @@ function openPopup(h,pw,slideIdx) {
   stage.appendChild(popup);
   S.activePopup={id:h.id};
   // Mostrar linha de destaque se existir
-  if (h.linha) showDestaque(h, slideIdx);
+  if (h.linhas?.length || h.linha) showDestaque(h, slideIdx);
 }
 
 // Guardar referência do destaque activo para re-render
