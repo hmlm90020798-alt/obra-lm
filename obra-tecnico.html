@@ -84,6 +84,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .anot-group:hover .anot-popup{display:block;}
 .anot-group{cursor:pointer;}
 
+/* ── LINHA DE DESTAQUE ── */
+.destaque-line {
+  pointer-events: none;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity .35s ease;
+}
+.destaque-line.visible { opacity: .55; }
+
 /* ── HOTSPOT PINS — pulsação ── */
 .pin-wrap{position:absolute;transform:translate(-50%,-50%);z-index:20;-webkit-tap-highlight-color:transparent;cursor:pointer;}
 .pin-outer{border-radius:50%;opacity:.3;animation:pulse-ring 2.5s ease-out infinite;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
@@ -202,6 +211,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <div class="stage" id="stage">
   <div class="loading" id="stage-loading"><div class="spinner"></div>A carregar…</div>
   <div class="slides" id="slides" style="display:none"></div>
+  <svg id="destaque-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;overflow:visible"></svg>
   <div class="zoom-btns">
     <button class="zoom-btn" onclick="zoom(1.35)">＋</button>
     <button class="zoom-btn" onclick="zoom(0)">⊙</button>
@@ -505,12 +515,47 @@ function openPopup(h,pw,slideIdx) {
   popup.style.top=(py+200>stRect.height)?Math.max(4,py-210)+'px':(py+14)+'px';
   stage.appendChild(popup);
   S.activePopup={id:h.id};
+  // Mostrar linha de destaque se existir
+  if (h.linha) showDestaque(h, slideIdx);
+}
+
+function showDestaque(h, slideIdx) {
+  const svg = document.getElementById('destaque-svg');
+  if (!svg || !h.linha) return;
+  // Remover anterior
+  svg.querySelectorAll('.destaque-line').forEach(el=>el.remove());
+  const img = document.querySelector(`#iw-${slideIdx} img`);
+  if (!img) return;
+  const stRect = document.getElementById('stage').getBoundingClientRect();
+  const iRect  = img.getBoundingClientRect();
+  const toX = v => iRect.left - stRect.left + v/100*iRect.width;
+  const toY = v => iRect.top  - stRect.top  + v/100*iRect.height;
+  const l = h.linha;
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1', toX(l.x1)); line.setAttribute('y1', toY(l.y1));
+  line.setAttribute('x2', toX(l.x2)); line.setAttribute('y2', toY(l.y2));
+  line.setAttribute('stroke', l.cor||'#e8a234');
+  line.setAttribute('stroke-width', String(l.sz||5));
+  line.setAttribute('class','destaque-line');
+  svg.appendChild(line);
+  // Fade in
+  requestAnimationFrame(()=>requestAnimationFrame(()=>line.classList.add('visible')));
+}
+
+function hideDestaque() {
+  const svg = document.getElementById('destaque-svg');
+  if (!svg) return;
+  svg.querySelectorAll('.destaque-line').forEach(el=>{
+    el.classList.remove('visible');
+    setTimeout(()=>el.remove(), 380);
+  });
 }
 
 function closePopup(){
   document.getElementById('popup')?.remove();
   document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));
   S.activePopup=null;
+  hideDestaque();
 }
 window.closePopup=closePopup;
 
