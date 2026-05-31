@@ -112,6 +112,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Pins */
+/* Linha destaque */
+.destaque-line { pointer-events:none; stroke-linecap:round; opacity:0; transition:opacity .35s ease; }
+.destaque-line.visible { opacity:.5; }
+
 .pin-wrap { position: absolute; transform: translate(-50%,-50%); z-index: 20; -webkit-tap-highlight-color: transparent; }
 .pin-wrap svg { display: block; cursor: pointer; transition: transform .18s cubic-bezier(.34,1.56,.64,1), filter .18s; filter: drop-shadow(0 2px 5px rgba(0,0,0,.75)); }
 .pin-wrap svg:active { transform: scale(.85) !important; }
@@ -212,6 +216,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 <div class="stage" id="stage">
   <div class="loading" id="stage-loading"><div class="spinner"></div>A carregar…</div>
   <div class="slides" id="slides" style="display:none"></div>
+  <svg id="destaque-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;overflow:visible"></svg>
   <div class="zoom-btns">
     <button class="zoom-btn" onclick="zoom(1.35)">＋</button>
     <button class="zoom-btn" onclick="zoom(0)">⊙</button>
@@ -357,7 +362,7 @@ window.goTo=function(idx){
     slides[prev].classList.remove('active');
     slides[idx].classList.remove('enter-l','enter-r');
     slides[idx].classList.add('active');
-    zoomReset(); closePopup(); updateNav();
+    zoomReset(); closePopup(); hideDestaque(); updateNav();
     setTimeout(()=>slides[prev].classList.remove('active'),400);
   }));
 };
@@ -422,7 +427,7 @@ function renderPins(idx){
 }
 
 let _rt;
-window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{S.alcados.forEach((_,i)=>{const img=document.querySelector(`#iw-${i} img`);if(img?.complete)renderPins(i);});},150);});
+window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{S.alcados.forEach((_,i)=>{const img=document.querySelector(`#iw-${i} img`);if(img?.complete)renderPins(i);});applyZoom();renderDestaque();},150);});
 
 /* ── Popup cliente ── */
 function openPopup(h,pw,slideIdx){
@@ -450,8 +455,31 @@ function openPopup(h,pw,slideIdx){
   const py=iRect.top-stRect.top+(h.y/100)*iRect.height;
   popup.style.cssText=`position:absolute;left:${Math.min(px+14,stRect.width-232)}px;top:${py+160+20>stRect.height?Math.max(4,py-160-10):py+14}px`;
   stage.appendChild(popup); S.popup={id:h.id};
+  if(h.linha) showDestaque(h,slideIdx);
 }
-function closePopup(){document.getElementById('popup')?.remove();document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));S.popup=null;}
+S._destaqueH=null; S._destaqueIdx=null;
+function renderDestaque(){
+  const h=S._destaqueH,slideIdx=S._destaqueIdx;
+  const svg=document.getElementById('destaque-svg');
+  if(!svg||!h?.linha)return;
+  svg.querySelectorAll('.destaque-line').forEach(el=>el.remove());
+  const img=document.querySelector(`#iw-${slideIdx} img`);
+  if(!img)return;
+  const stRect=stage.getBoundingClientRect(),iRect=img.getBoundingClientRect();
+  const toX=v=>iRect.left-stRect.left+v/100*iRect.width;
+  const toY=v=>iRect.top-stRect.top+v/100*iRect.height;
+  const l=h.linha;
+  const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',toX(l.x1));line.setAttribute('y1',toY(l.y1));
+  line.setAttribute('x2',toX(l.x2));line.setAttribute('y2',toY(l.y2));
+  line.setAttribute('stroke',l.cor||'#e8a234');
+  line.setAttribute('stroke-width',String(l.sz||5));
+  line.setAttribute('class','destaque-line visible');
+  svg.appendChild(line);
+}
+function showDestaque(h,slideIdx){S._destaqueH=h;S._destaqueIdx=slideIdx;renderDestaque();}
+function hideDestaque(){S._destaqueH=null;S._destaqueIdx=null;const svg=document.getElementById('destaque-svg');if(!svg)return;svg.querySelectorAll('.destaque-line').forEach(el=>{el.classList.remove('visible');setTimeout(()=>el.remove(),380);});}
+function closePopup(){document.getElementById('popup')?.remove();document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));S.popup=null;hideDestaque();}
 window.closePopup=closePopup;
 stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
 window.openUrlModal=(url,titulo)=>{ window.open(url,'_blank','noopener'); };

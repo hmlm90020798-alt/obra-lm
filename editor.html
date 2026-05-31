@@ -945,11 +945,13 @@ document.getElementById('img-wrap').addEventListener('click', ev => {
         h.linha = { x1:S.defLinhaStep.x1, y1:S.defLinhaStep.y1, x2:x, y2:y, cor, sz:+sz };
         updateLinhaStatus(h.linha);
       }
-      S.defLinha=false; S.defLinhaStep=null; S.defLinhaHsId=null;
+      S.defLinha=false; S.defLinhaStep=null;
       document.getElementById('canvas-hint').textContent='';
       document.getElementById('btn-def-linha').style.background='';
       document.getElementById('btn-def-linha').style.color='';
       renderMarkers();
+      // Reabrir painel de edição
+      if (h) editHs(h.id);
       toast('Linha de destaque definida ✓','ok');
     }
     return;
@@ -1087,18 +1089,34 @@ window.setSz=setSz;
 ══════════════════════════════════════════ */
 /* ── LINHA DE DESTAQUE ──────────────────────── */
 window.iniciarDefLinha = () => {
-  if (!S.editId && !S.pendingXY) return toast('Guarda o hotspot primeiro','err');
-  const hsId = S.editId || null;
-  if (!hsId) return toast('Guarda o hotspot primeiro para definir a linha','err');
+  // Guardar primeiro se for hotspot novo
+  if (!S.editId) {
+    const label = document.getElementById('hs-label').value.trim();
+    if (!label) return toast('Preenche o label do hotspot primeiro','err');
+    saveHs();
+    // Aguardar que saveHs crie o hotspot e actualize S.editId
+    setTimeout(()=>{
+      if (!S.editId) return toast('Guarda o hotspot primeiro','err');
+      _ativarDefLinha(S.editId);
+    }, 100);
+    return;
+  }
+  _ativarDefLinha(S.editId);
+};
+
+function _ativarDefLinha(hsId) {
   S.defLinha = true;
   S.defLinhaHsId = hsId;
   S.defLinhaStep = null;
+  // Fechar o painel direito para ver a imagem
+  document.getElementById('right').classList.remove('open');
   setMode('ver');
   document.getElementById('btn-def-linha').style.background = 'var(--accent)';
   document.getElementById('btn-def-linha').style.color = '#fff';
   document.getElementById('canvas-hint').textContent = '1º clique: início da linha  2º clique: fim';
   toast('Clica na imagem para definir os dois pontos da linha','ok');
-};
+  // Reabrir painel depois de definir — feito no canvas click
+}
 
 window.clearLinha = () => {
   if (!S.editId) return;

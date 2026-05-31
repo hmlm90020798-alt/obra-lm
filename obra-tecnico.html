@@ -397,7 +397,7 @@ window.goTo=function(idx){
     slides[prev].classList.remove('active');
     slides[idx].classList.remove('enter-l','enter-r');
     slides[idx].classList.add('active');
-    zoomReset(); closePopup(); updateNav();
+    zoomReset(); closePopup(); hideDestaque(); updateNav();
     renderLegenda(idx);
     setTimeout(()=>slides[prev].classList.remove('active'),400);
   }));
@@ -519,10 +519,15 @@ function openPopup(h,pw,slideIdx) {
   if (h.linha) showDestaque(h, slideIdx);
 }
 
-function showDestaque(h, slideIdx) {
+// Guardar referência do destaque activo para re-render
+S._destaqueH = null;
+S._destaqueIdx = null;
+
+function renderDestaque() {
+  const h = S._destaqueH;
+  const slideIdx = S._destaqueIdx;
   const svg = document.getElementById('destaque-svg');
-  if (!svg || !h.linha) return;
-  // Remover anterior
+  if (!svg || !h?.linha) return;
   svg.querySelectorAll('.destaque-line').forEach(el=>el.remove());
   const img = document.querySelector(`#iw-${slideIdx} img`);
   if (!img) return;
@@ -536,13 +541,19 @@ function showDestaque(h, slideIdx) {
   line.setAttribute('x2', toX(l.x2)); line.setAttribute('y2', toY(l.y2));
   line.setAttribute('stroke', l.cor||'#e8a234');
   line.setAttribute('stroke-width', String(l.sz||5));
-  line.setAttribute('class','destaque-line');
+  line.setAttribute('class','destaque-line visible');
   svg.appendChild(line);
-  // Fade in
-  requestAnimationFrame(()=>requestAnimationFrame(()=>line.classList.add('visible')));
+}
+
+function showDestaque(h, slideIdx) {
+  S._destaqueH   = h;
+  S._destaqueIdx = slideIdx;
+  renderDestaque();
 }
 
 function hideDestaque() {
+  S._destaqueH   = null;
+  S._destaqueIdx = null;
   const svg = document.getElementById('destaque-svg');
   if (!svg) return;
   svg.querySelectorAll('.destaque-line').forEach(el=>{
@@ -634,7 +645,7 @@ function renderLegenda(idx){
 }
 
 let _rt;
-window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{S.alcados.forEach((_,i)=>{const img=document.querySelector(`#iw-${i} img`);if(img?.complete){renderPins(i);renderAnotViewer(i);}});applyZoom();},150);});
+window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{S.alcados.forEach((_,i)=>{const img=document.querySelector(`#iw-${i} img`);if(img?.complete){renderPins(i);renderAnotViewer(i);}});applyZoom();renderDestaque();},150);});
 
 /* ── TABS ── */
 window.switchTab=tab=>{
