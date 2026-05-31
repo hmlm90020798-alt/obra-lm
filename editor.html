@@ -164,6 +164,9 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 
 /* Anotações SVG */
 .anot-text { pointer-events: none; font-family: 'DM Mono', monospace; }
+#linha-preview-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:30; }
+.linha-edit-line { stroke-linecap:round; }
+.linha-edit-ctrl { cursor:grab; transition:r .15s; }
 .anot-del-btn { cursor: pointer; opacity: 0; transition: opacity .15s; }
 .anot-group:hover .anot-del-btn { opacity: 1; }
 .img-wrap.anotando { cursor: crosshair; }
@@ -387,6 +390,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   <div class="stage" id="stage" style="display:none">
     <div class="img-wrap" id="img-wrap">
       <img id="alcado-img" src="" alt="">
+      <svg id="linha-preview-svg"></svg>
       <svg id="anot-svg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible">
         <defs>
           <marker id="arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
@@ -937,22 +941,22 @@ document.getElementById('img-wrap').addEventListener('click', ev => {
       document.getElementById('canvas-hint').textContent = '2º clique: fim da linha';
       toast('Ponto 1 definido — clica no segundo ponto','ok');
     } else {
-      // Guardar linha no hotspot
-      const h = (S.hotspots[S.activeKey]||[]).find(x=>x.id===S.defLinhaHsId);
+      const cor = document.getElementById('hs-linha-cor')?.value || '#e8a234';
+      const sz  = +(document.getElementById('hs-linha-sz')?.value || '5');
+      const h   = (S.hotspots[S.activeKey]||[]).find(x=>x.id===S.defLinhaHsId);
       if (h) {
-        const cor = document.getElementById('hs-linha-cor')?.value || '#e8a234';
-        const sz  = document.getElementById('hs-linha-sz')?.value  || '5';
-        h.linha = { x1:S.defLinhaStep.x1, y1:S.defLinhaStep.y1, x2:x, y2:y, cor, sz:+sz };
+        h.linha = { x1:S.defLinhaStep.x1, y1:S.defLinhaStep.y1, x2:x, y2:y, cor, sz };
         updateLinhaStatus(h.linha);
+        clearLinhaPreview();
+        renderLinhaEditor(h.linha); // mostrar com handles de drag
       }
       S.defLinha=false; S.defLinhaStep=null;
-      document.getElementById('canvas-hint').textContent='';
+      document.getElementById('canvas-hint').textContent='Arrasta os pontos para ajustar a linha';
       document.getElementById('btn-def-linha').style.background='';
       document.getElementById('btn-def-linha').style.color='';
       renderMarkers();
-      // Reabrir painel de edição
       if (h) editHs(h.id);
-      toast('Linha de destaque definida ✓','ok');
+      toast('Linha definida — arrasta os pontos para ajustar','ok');
     }
     return;
   }
@@ -1032,6 +1036,7 @@ window.closeRp = () => {
   S.pendingXY=null; S.editId=null;
   document.querySelectorAll('.mk').forEach(m=>m.classList.remove('on'));
   S.selHsId=null;
+  clearLinhaPreview();
 };
 
 /* ── Tipo dropdown ─── */
@@ -1221,10 +1226,10 @@ window.editHs = id => {
   renderHsList();
   document.querySelectorAll('.mk').forEach(m=>m.classList.toggle('on',m.id==='mk-'+id));
   openRp(true);
-  // Restaurar linkAlcado após popular dropdown
   setTimeout(()=>{
     const selAlc=document.getElementById('hs-link-alcado');
     if (selAlc && h.linkAlcado) selAlc.value=h.linkAlcado;
+    mostrarLinhaSeExiste(h);
   },50);
 };
 
@@ -1234,6 +1239,124 @@ window.delHs = (id,e) => {
   if(S.editId===id) closeRp();
   renderHsList(); renderMarkers(); renderAlcados();
 };
+
+/* ══════════════════════════════════════════
+   LINHA DE DESTAQUE — PREVIEW & EDITOR
+══════════════════════════════════════════ */
+function getImgCoords(ev) {
+  const img  = document.getElementById('alcado-img');
+  const rect = img.getBoundingClientRect();
+  return {
+    x: +((ev.clientX-rect.left)/rect.width*100).toFixed(2),
+    y: +((ev.clientY-rect.top)/rect.height*100).toFixed(2),
+    px: ev.clientX-rect.left,
+    py: ev.clientY-rect.top,
+    W: rect.width, H: rect.height,
+  };
+}
+
+function imgPctToPx(px, py) {
+  const img  = document.getElementById('alcado-img');
+  const rect = img.getBoundingClientRect();
+  const wrap = document.getElementById('img-wrap');
+  const wr   = wrap.getBoundingClientRect();
+  return {
+    x: (px/100)*rect.width  + (rect.left - wr.left),
+    y: (py/100)*rect.height + (rect.top  - wr.top),
+  };
+}
+
+function clearLinhaPreview() {
+  const svg = document.getElementById('linha-preview-svg');
+  if (svg) { while(svg.firstChild) svg.removeChild(svg.firstChild); }
+}
+
+function renderLinhaEditor(linha) {
+  clearLinhaPreview();
+  if (!linha) return;
+  const svg = document.getElementById('linha-preview-svg');
+  if (!svg) return;
+  const cor = linha.cor || '#e8a234';
+  const p1 = imgPctToPx(linha.x1, linha.y1);
+  const p2 = imgPctToPx(linha.x2, linha.y2);
+
+  // Linha
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
+  line.setAttribute('x2',p2.x); line.setAttribute('y2',p2.y);
+  line.setAttribute('stroke',cor); line.setAttribute('stroke-width',String(linha.sz||5));
+  line.setAttribute('class','linha-edit-line'); line.setAttribute('pointer-events','none');
+  svg.appendChild(line);
+
+  // Handles de drag
+  [{p:p1,k:'1'},{p:p2,k:'2'}].forEach(({p,k}) => {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',p.x); circle.setAttribute('cy',p.y);
+    circle.setAttribute('r','7'); circle.setAttribute('fill',cor);
+    circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width','1.5');
+    circle.setAttribute('class','linha-edit-ctrl');
+    circle.style.pointerEvents = 'all';
+    circle.addEventListener('mousedown', ev => {
+      ev.stopPropagation(); ev.preventDefault();
+      const img2  = document.getElementById('alcado-img');
+      const rect2 = img2.getBoundingClientRect();
+      const onMove = mv => {
+        const nx = +((mv.clientX-rect2.left)/rect2.width*100).toFixed(2);
+        const ny = +((mv.clientY-rect2.top)/rect2.height*100).toFixed(2);
+        const h  = (S.hotspots[S.activeKey]||[]).find(x=>x.id===S.editId);
+        if (!h?.linha) return;
+        if (k==='1') { h.linha.x1=nx; h.linha.y1=ny; }
+        else          { h.linha.x2=nx; h.linha.y2=ny; }
+        updateLinhaStatus(h.linha);
+        renderLinhaEditor(h.linha);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+      };
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+    });
+    svg.appendChild(circle);
+  });
+}
+
+// Preview ao vivo enquanto define a linha (mousemove)
+document.getElementById('img-wrap').addEventListener('mousemove', ev => {
+  if (!S.defLinha || !S.defLinhaStep) return;
+  const img  = document.getElementById('alcado-img');
+  const rect = img.getBoundingClientRect();
+  const wrap = document.getElementById('img-wrap');
+  const wr   = wrap.getBoundingClientRect();
+  const p1   = imgPctToPx(S.defLinhaStep.x1, S.defLinhaStep.y1);
+  const x2   = ev.clientX - wr.left;
+  const y2   = ev.clientY - wr.top;
+  const cor  = document.getElementById('hs-linha-cor')?.value || '#e8a234';
+  const sz   = document.getElementById('hs-linha-sz')?.value  || '5';
+  clearLinhaPreview();
+  const svg = document.getElementById('linha-preview-svg');
+  if (!svg) return;
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
+  line.setAttribute('x2',x2);   line.setAttribute('y2',y2);
+  line.setAttribute('stroke',cor); line.setAttribute('stroke-width',sz);
+  line.setAttribute('class','linha-edit-line');
+  line.setAttribute('stroke-dasharray','6,4');
+  line.setAttribute('pointer-events','none');
+  svg.appendChild(line);
+  // Ponto inicial
+  const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dot.setAttribute('cx',p1.x); dot.setAttribute('cy',p1.y);
+  dot.setAttribute('r','5'); dot.setAttribute('fill',cor);
+  dot.setAttribute('pointer-events','none');
+  svg.appendChild(dot);
+});
+
+// Mostrar linha existente ao abrir o painel de edição
+function mostrarLinhaSeExiste(h) {
+  if (h?.linha) renderLinhaEditor(h.linha);
+  else clearLinhaPreview();
+}
 
 /* ══════════════════════════════════════════
    MARKERS
