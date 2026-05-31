@@ -527,27 +527,32 @@ function renderDestaque() {
   const h = S._destaqueH;
   const slideIdx = S._destaqueIdx;
   const svg = document.getElementById('destaque-svg');
-  if (!svg || !h?.linha) return;
+  if (!svg) return;
   svg.querySelectorAll('.destaque-line').forEach(el=>el.remove());
+  const linhas = h?.linhas || (h?.linha ? [h.linha] : []);
+  if (!linhas.length) return;
   const img = document.querySelector(`#iw-${slideIdx} img`);
   if (!img) return;
   const stRect = document.getElementById('stage').getBoundingClientRect();
   const iRect  = img.getBoundingClientRect();
   const toX = v => iRect.left - stRect.left + v/100*iRect.width;
   const toY = v => iRect.top  - stRect.top  + v/100*iRect.height;
-  const l = h.linha;
-  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-  line.setAttribute('x1', toX(l.x1)); line.setAttribute('y1', toY(l.y1));
-  line.setAttribute('x2', toX(l.x2)); line.setAttribute('y2', toY(l.y2));
-  line.setAttribute('stroke', l.cor||'#e8a234');
-  line.setAttribute('stroke-width', String(l.sz||5));
-  line.setAttribute('class','destaque-line visible');
-  svg.appendChild(line);
+  linhas.forEach(l => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', toX(l.x1)); line.setAttribute('y1', toY(l.y1));
+    line.setAttribute('x2', toX(l.x2)); line.setAttribute('y2', toY(l.y2));
+    line.setAttribute('stroke', l.cor||'#e8a234');
+    line.setAttribute('stroke-width', String(l.sz||5));
+    line.setAttribute('class','destaque-line visible');
+    svg.appendChild(line);
+  });
 }
 
 function showDestaque(h, slideIdx) {
   S._destaqueH   = h;
   S._destaqueIdx = slideIdx;
+  // Migrar formato antigo h.linha → h.linhas
+  if (h.linha && !h.linhas) h.linhas = [h.linha];
   renderDestaque();
 }
 

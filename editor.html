@@ -441,30 +441,23 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
       <input type="text" id="hs-url" placeholder="https://leroymerlin.pt/produto/...">
     </div>
     <div class="field">
-      <label>Linha de destaque</label>
-      <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-        <button class="btn btn-secondary btn-sm" id="btn-def-linha" onclick="iniciarDefLinha()" style="font-size:.68rem">
-          ✦ Definir linha
-        </button>
-        <span id="linha-status" style="font-family:var(--mono);font-size:.62rem;color:var(--text3)">Não definida</span>
-        <button id="btn-clear-linha" onclick="clearLinha()" style="display:none;background:none;border:none;color:var(--red);cursor:pointer;font-size:.75rem" title="Remover linha">✕</button>
-      </div>
-      <div class="field" style="margin-top:.4rem;display:flex;align-items:center;gap:.5rem">
-        <label style="margin:0;white-space:nowrap">Cor</label>
-        <select id="hs-linha-cor" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.65rem;padding:.22rem .4rem;border-radius:4px;outline:none;flex:1">
+      <label>Linhas de destaque</label>
+      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem;flex-wrap:wrap">
+        <select id="hs-linha-cor" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.63rem;padding:.22rem .35rem;border-radius:4px;outline:none">
           <option value="#e8a234">Âmbar</option>
           <option value="#4f7cff">Azul</option>
           <option value="#2dd898">Verde</option>
           <option value="#f05252">Vermelho</option>
           <option value="#ffffff">Branco</option>
         </select>
-        <label style="margin:0;white-space:nowrap">Esp.</label>
-        <select id="hs-linha-sz" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.65rem;padding:.22rem .4rem;border-radius:4px;outline:none;flex:1">
+        <select id="hs-linha-sz" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.63rem;padding:.22rem .35rem;border-radius:4px;outline:none">
           <option value="3">Fina</option>
           <option value="5" selected>Média</option>
           <option value="8">Grossa</option>
         </select>
+        <button class="btn btn-secondary btn-sm" id="btn-def-linha" onclick="iniciarDefLinha()" style="font-size:.65rem;flex:1">✦ Adicionar linha</button>
       </div>
+      <div id="linhas-list" style="display:flex;flex-direction:column;gap:.25rem"></div>
     </div>
     <div class="field">
       <label>Link para alçado</label>
@@ -603,9 +596,11 @@ const S = {
   mode: 'ver',
   anotTool: 'texto',
   anotStep: null,
-  defLinha: false,    // modo de definição de linha de destaque
-  defLinhaHsId: null, // hotspot a que a linha pertence
-  defLinhaStep: null, // primeiro ponto já definido
+  defLinha: false,
+  defLinhaHsId: null,
+  defLinhaStep: null,
+  defLinhaEditIdx: null,
+  _hoverLinhaIdx: null,
   anotFontSz: 12,
   anotRot: 0,
   selAnotId: null,
@@ -943,20 +938,24 @@ document.getElementById('img-wrap').addEventListener('click', ev => {
     } else {
       const cor = document.getElementById('hs-linha-cor')?.value || '#e8a234';
       const sz  = +(document.getElementById('hs-linha-sz')?.value || '5');
-      const h   = (S.hotspots[S.activeKey]||[]).find(x=>x.id===S.defLinhaHsId);
+      const h   = (S.hotspots[S.activeKey]||[]).find(hh=>hh.id===S.defLinhaHsId);
       if (h) {
-        h.linha = { x1:S.defLinhaStep.x1, y1:S.defLinhaStep.y1, x2:x, y2:y, cor, sz };
-        updateLinhaStatus(h.linha);
+        if (!h.linhas) h.linhas = h.linha ? [h.linha] : [];
+        delete h.linha; // migrar formato antigo
+        const novaLinha = { id:'ln_'+Date.now(), x1:S.defLinhaStep.x1, y1:S.defLinhaStep.y1, x2:x, y2:y, cor, sz };
+        h.linhas.push(novaLinha);
+        S.defLinhaEditIdx = h.linhas.length - 1;
         clearLinhaPreview();
-        renderLinhaEditor(h.linha); // mostrar com handles de drag
+        renderLinhasEditor(h);
+        renderLinhasList(h);
       }
       S.defLinha=false; S.defLinhaStep=null;
-      document.getElementById('canvas-hint').textContent='Arrasta os pontos para ajustar a linha';
+      document.getElementById('canvas-hint').textContent='Arrasta os pontos para ajustar';
       document.getElementById('btn-def-linha').style.background='';
       document.getElementById('btn-def-linha').style.color='';
       renderMarkers();
       if (h) editHs(h.id);
-      toast('Linha definida — arrasta os pontos para ajustar','ok');
+      toast('Linha adicionada — arrasta para ajustar','ok');
     }
     return;
   }
@@ -1016,7 +1015,8 @@ function openRp(editMode) {
     document.getElementById('hs-cli').value   = '';
     document.getElementById('hs-url').value   = '';
     document.getElementById('hs-bib').checked = false;
-    updateLinhaStatus(null);
+    document.getElementById('linhas-list').innerHTML='<div style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">Sem linhas definidas</div>';
+    S.defLinhaEditIdx = null; S._hoverLinhaIdx = null;
     document.getElementById('rp-coords').textContent = S.pendingXY
       ? `x:${S.pendingXY.x}%  y:${S.pendingXY.y}%` : '';
     selTipo('tomada');
@@ -1123,30 +1123,59 @@ function _ativarDefLinha(hsId) {
   // Reabrir painel depois de definir — feito no canvas click
 }
 
-window.clearLinha = () => {
-  if (!S.editId) return;
+window.deleteLinha = (idx, e) => {
+  if (e) e.stopPropagation();
   const h = (S.hotspots[S.activeKey]||[]).find(x=>x.id===S.editId);
-  if (h) { delete h.linha; }
-  updateLinhaStatus(null);
+  if (!h) return;
+  if (!h.linhas) h.linhas = h.linha ? [h.linha] : [];
+  h.linhas.splice(idx, 1);
+  delete h.linha; // limpar formato antigo
+  clearLinhaPreview();
+  renderLinhasList(h);
+  renderLinhasEditor(h);
   renderMarkers();
 };
 
-function updateLinhaStatus(linha) {
-  const status = document.getElementById('linha-status');
-  const clearBtn = document.getElementById('btn-clear-linha');
-  const defBtn = document.getElementById('btn-def-linha');
-  if (!status) return;
-  if (linha) {
-    status.textContent = `(${linha.x1.toFixed(0)}%, ${linha.y1.toFixed(0)}%) → (${linha.x2.toFixed(0)}%, ${linha.y2.toFixed(0)}%)`;
-    status.style.color = 'var(--green)';
-    if (clearBtn) clearBtn.style.display = 'inline';
-    if (defBtn) { defBtn.style.background=''; defBtn.style.color=''; }
-  } else {
-    status.textContent = 'Não definida';
-    status.style.color = 'var(--text3)';
-    if (clearBtn) clearBtn.style.display = 'none';
-  }
+window.editLinha = idx => {
+  const h = (S.hotspots[S.activeKey]||[]).find(x=>x.id===S.editId);
+  if (!h) return;
+  const linhas = h.linhas || (h.linha ? [h.linha] : []);
+  const l = linhas[idx];
+  if (!l) return;
+  S.defLinhaEditIdx = idx;
+  // Sincronizar cor e espessura
+  const corEl = document.getElementById('hs-linha-cor');
+  const szEl  = document.getElementById('hs-linha-sz');
+  if (corEl) corEl.value = l.cor || '#e8a234';
+  if (szEl)  szEl.value  = String(l.sz || 5);
+  renderLinhasEditor(h);
+  document.getElementById('canvas-hint').textContent = 'Arrasta os pontos para ajustar';
+  toast(`A editar Linha ${idx+1} — arrasta os pontos`,'ok');
+};
+
+function renderLinhasList(h) {
+  const el = document.getElementById('linhas-list');
+  if (!el) return;
+  const linhas = h?.linhas || (h?.linha ? [h.linha] : []);
+  if (!linhas.length) { el.innerHTML='<div style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">Sem linhas definidas</div>'; return; }
+  el.innerHTML = '';
+  linhas.forEach((l, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:.35rem;padding:.3rem .45rem;background:var(--raised);border:1px solid var(--border);border-radius:4px;font-size:.62rem;font-family:var(--mono);cursor:pointer;transition:border-color .15s';
+    const dot = `<span style="width:8px;height:8px;border-radius:50%;background:${l.cor||'#e8a234'};flex-shrink:0;display:inline-block"></span>`;
+    const lbl = `<span style="flex:1;color:var(--text2)">Linha ${i+1}</span>`;
+    const edit = `<span style="color:var(--accent)" title="Editar">✎</span>`;
+    const del  = `<span style="color:var(--red);cursor:pointer" onclick="deleteLinha(${i},event)" title="Remover">✕</span>`;
+    row.innerHTML = dot + lbl + edit + del;
+    row.onclick = (e) => { if(e.target.closest('[onclick]')&&!e.target.closest('[title="Editar"]')) return; editLinha(i); };
+    // Highlight ao hover
+    row.addEventListener('mouseenter', ()=>{ S._hoverLinhaIdx=i; renderLinhasEditor(h); });
+    row.addEventListener('mouseleave', ()=>{ S._hoverLinhaIdx=null; renderLinhasEditor(h); });
+    el.appendChild(row);
+  });
 }
+
+function updateLinhaStatus(linha) { /* compatibilidade */ }
 
 window.saveHs = () => {
   const label      = document.getElementById('hs-label').value.trim();
@@ -1164,12 +1193,6 @@ window.saveHs = () => {
   if (S.editId) {
     const h = S.hotspots[key].find(x=>x.id===S.editId);
     if (h) {
-      if (h.linha) {
-        const lc=document.getElementById('hs-linha-cor');
-        const ls=document.getElementById('hs-linha-sz');
-        if (lc) h.linha.cor=lc.value;
-        if (ls) h.linha.sz=+ls.value;
-      }
       Object.assign(h, { label, cota, tec, cli, url, linkAlcado, tipo:curTipo, pinSize:curSz });
     }
     const bh = S.biblioteca.find(b=>b.id===h?.bibId);
@@ -1229,7 +1252,11 @@ window.editHs = id => {
   setTimeout(()=>{
     const selAlc=document.getElementById('hs-link-alcado');
     if (selAlc && h.linkAlcado) selAlc.value=h.linkAlcado;
-    mostrarLinhaSeExiste(h);
+    const linhas = h.linhas || (h.linha ? [h.linha] : []);
+    S.defLinhaEditIdx = linhas.length > 0 ? linhas.length-1 : null;
+    S._hoverLinhaIdx = null;
+    renderLinhasList(h);
+    renderLinhasEditor(h);
   },50);
 };
 
@@ -1271,55 +1298,62 @@ function clearLinhaPreview() {
   if (svg) { while(svg.firstChild) svg.removeChild(svg.firstChild); }
 }
 
-function renderLinhaEditor(linha) {
+function renderLinhasEditor(h) {
   clearLinhaPreview();
-  if (!linha) return;
+  if (!h) return;
+  const linhas = h.linhas || (h.linha ? [h.linha] : []);
+  if (!linhas.length) return;
   const svg = document.getElementById('linha-preview-svg');
   if (!svg) return;
-  const cor = linha.cor || '#e8a234';
-  const p1 = imgPctToPx(linha.x1, linha.y1);
-  const p2 = imgPctToPx(linha.x2, linha.y2);
 
-  // Linha
-  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-  line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
-  line.setAttribute('x2',p2.x); line.setAttribute('y2',p2.y);
-  line.setAttribute('stroke',cor); line.setAttribute('stroke-width',String(linha.sz||5));
-  line.setAttribute('class','linha-edit-line'); line.setAttribute('pointer-events','none');
-  svg.appendChild(line);
+  linhas.forEach((linha, idx) => {
+    const cor     = linha.cor || '#e8a234';
+    const isEdit  = idx === S.defLinhaEditIdx;
+    const isHover = idx === S._hoverLinhaIdx;
+    const p1 = imgPctToPx(linha.x1, linha.y1);
+    const p2 = imgPctToPx(linha.x2, linha.y2);
 
-  // Handles de drag
-  [{p:p1,k:'1'},{p:p2,k:'2'}].forEach(({p,k}) => {
-    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circle.setAttribute('cx',p.x); circle.setAttribute('cy',p.y);
-    circle.setAttribute('r','7'); circle.setAttribute('fill',cor);
-    circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width','1.5');
-    circle.setAttribute('class','linha-edit-ctrl');
-    circle.style.pointerEvents = 'all';
-    circle.addEventListener('mousedown', ev => {
-      ev.stopPropagation(); ev.preventDefault();
-      const img2  = document.getElementById('alcado-img');
-      const rect2 = img2.getBoundingClientRect();
-      const onMove = mv => {
-        const nx = +((mv.clientX-rect2.left)/rect2.width*100).toFixed(2);
-        const ny = +((mv.clientY-rect2.top)/rect2.height*100).toFixed(2);
-        const h  = (S.hotspots[S.activeKey]||[]).find(x=>x.id===S.editId);
-        if (!h?.linha) return;
-        if (k==='1') { h.linha.x1=nx; h.linha.y1=ny; }
-        else          { h.linha.x2=nx; h.linha.y2=ny; }
-        updateLinhaStatus(h.linha);
-        renderLinhaEditor(h.linha);
-      };
-      const onUp = () => {
-        document.removeEventListener('mousemove',onMove);
-        document.removeEventListener('mouseup',onUp);
-      };
-      document.addEventListener('mousemove',onMove);
-      document.addEventListener('mouseup',onUp);
-    });
-    svg.appendChild(circle);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',p1.x); line.setAttribute('y1',p1.y);
+    line.setAttribute('x2',p2.x); line.setAttribute('y2',p2.y);
+    line.setAttribute('stroke',cor);
+    line.setAttribute('stroke-width',String(linha.sz||5));
+    line.setAttribute('opacity', isHover ? '1' : isEdit ? '.9' : '.55');
+    line.setAttribute('pointer-events','none');
+    svg.appendChild(line);
+
+    // Handles apenas na linha em edição
+    if (isEdit) {
+      [{p:p1,k:'1'},{p:p2,k:'2'}].forEach(({p,k}) => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        circle.setAttribute('cx',p.x); circle.setAttribute('cy',p.y);
+        circle.setAttribute('r','7'); circle.setAttribute('fill',cor);
+        circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width','1.5');
+        circle.setAttribute('class','linha-edit-ctrl');
+        circle.style.pointerEvents = 'all';
+        circle.addEventListener('mousedown', ev => {
+          ev.stopPropagation(); ev.preventDefault();
+          const img2 = document.getElementById('alcado-img');
+          const r2   = img2.getBoundingClientRect();
+          const onMove = mv => {
+            const nx=+((mv.clientX-r2.left)/r2.width*100).toFixed(2);
+            const ny=+((mv.clientY-r2.top)/r2.height*100).toFixed(2);
+            if (k==='1'){linha.x1=nx;linha.y1=ny;}
+            else        {linha.x2=nx;linha.y2=ny;}
+            renderLinhasEditor(h);
+          };
+          const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
+          document.addEventListener('mousemove',onMove);
+          document.addEventListener('mouseup',onUp);
+        });
+        svg.appendChild(circle);
+      });
+    }
   });
 }
+
+// Compatibilidade com chamadas antigas
+function renderLinhaEditor(linha) { renderLinhasEditor({linhas:[linha]}); }
 
 // Preview ao vivo enquanto define a linha (mousemove)
 document.getElementById('img-wrap').addEventListener('mousemove', ev => {
@@ -1351,12 +1385,6 @@ document.getElementById('img-wrap').addEventListener('mousemove', ev => {
   dot.setAttribute('pointer-events','none');
   svg.appendChild(dot);
 });
-
-// Mostrar linha existente ao abrir o painel de edição
-function mostrarLinhaSeExiste(h) {
-  if (h?.linha) renderLinhaEditor(h.linha);
-  else clearLinhaPreview();
-}
 
 /* ══════════════════════════════════════════
    MARKERS
