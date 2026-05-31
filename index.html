@@ -184,6 +184,21 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
   </div>
 </div>
 
+<!-- MODAL DUPLICAR -->
+<div class="modal-bg" id="modal-dup">
+  <div class="modal">
+    <div class="modal-title">Duplicar <em>Obra</em></div>
+    <p style="font-size:.78rem;color:var(--text2);margin-bottom:1rem">Cria uma cópia com um novo ID. Todos os dados e imagens são copiados.</p>
+    <div class="f"><label>Novo ID</label><input type="text" id="dup-id" placeholder="ex: joao-silva-v2"></div>
+    <div class="f"><label>Nome / Cliente</label><input type="text" id="dup-nome" placeholder="Nome da nova obra"></div>
+    <div id="dup-status" style="font-family:var(--mono);font-size:.72rem;color:var(--text3);min-height:1.2rem"></div>
+    <div class="modal-actions" style="margin-top:.75rem">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-dup').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-dup-confirmar" onclick="confirmarDuplicar()">Duplicar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL NOVA OBRA -->
 <div class="modal-bg" id="modal-nova">
   <div class="modal">
@@ -202,7 +217,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 
 <script type="module">
 import { db, auth }     from './firebase.js';
-import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -311,6 +326,10 @@ window.renderObras = function() {
         <a class="card-btn primary" href="${base}editor.html?obra=${o.id}">✏️ Editor</a>
         <a class="card-btn" href="${base}obra-tecnico.html?obra=${o.id}" target="_blank">🔧 Técnico</a>
         <a class="card-btn" href="${base}obra-cliente.html?obra=${o.id}" target="_blank">👁 Cliente</a>
+      </div>
+      <div class="card-actions" style="border-top:none;padding-top:0">
+        <button class="card-btn" onclick="duplicarObra('${o.id}',event)" style="color:var(--text3)">⧉ Duplicar</button>
+        <button class="card-btn" onclick="apagarObra('${o.id}','${(o.nome||o.id).replace(/'/g,"\'")}',event)" style="color:var(--red)">🗑 Apagar</button>
       </div>`;
     grid.appendChild(card);
   });
@@ -342,6 +361,67 @@ window.criarObra = async () => {
     const base = location.origin + location.pathname.replace('index.html','');
     location.href = `${base}editor.html?obra=${id}`;
   } catch(e) { toast('Erro: '+e.message,'err'); }
+};
+
+// ── APAGAR OBRA ──────────────────────────────────────────────
+window.apagarObra = async (id, nome, ev) => {
+  ev.preventDefault(); ev.stopPropagation();
+  if (!confirm(`Apagar a obra "${nome}"?\n\nEsta acção é irreversível.`)) return;
+  try {
+    toast('A apagar…');
+    const obraSnap = await getDoc(doc(db,'obras',id));
+    if (obraSnap.exists()) {
+      const alcados = obraSnap.data().alcados || [];
+      await Promise.all(alcados.map(a =>
+        deleteDoc(doc(db,'obras_imagens',`${id}_${a.key}`)).catch(()=>{})
+      ));
+    }
+    await deleteDoc(doc(db,'obras',id));
+    allObras = allObras.filter(o=>o.id!==id);
+    renderObras();
+    toast('Obra eliminada','ok');
+  } catch(e) { toast('Erro: '+e.message,'err'); }
+};
+
+// ── DUPLICAR OBRA ─────────────────────────────────────────────
+let _dupSrcId = null;
+window.duplicarObra = (id, ev) => {
+  ev.preventDefault(); ev.stopPropagation();
+  _dupSrcId = id;
+  const o = allObras.find(x=>x.id===id);
+  document.getElementById('dup-id').value   = id+'-copia';
+  document.getElementById('dup-nome').value = (o?.nome||id)+' (cópia)';
+  document.getElementById('dup-status').textContent = '';
+  document.getElementById('btn-dup-confirmar').disabled = false;
+  document.getElementById('modal-dup').classList.add('open');
+};
+
+window.confirmarDuplicar = async () => {
+  const novoId   = document.getElementById('dup-id').value.trim().toLowerCase().replace(/[^a-z0-9\-_]/g,'');
+  const novoNome = document.getElementById('dup-nome').value.trim();
+  const status   = document.getElementById('dup-status');
+  if (!novoId)   return (status.textContent='ID inválido');
+  if (!novoNome) return (status.textContent='Insere um nome');
+  const btn = document.getElementById('btn-dup-confirmar');
+  btn.disabled=true; status.textContent='A copiar dados…';
+  try {
+    const src = await getDoc(doc(db,'obras',_dupSrcId));
+    if (!src.exists()) throw new Error('Obra original não encontrada');
+    const d = src.data();
+    status.textContent='A copiar imagens…';
+    await Promise.all((d.alcados||[]).map(async a => {
+      if (!a.temImg) return;
+      try {
+        const s = await getDoc(doc(db,'obras_imagens',`${_dupSrcId}_${a.key}`));
+        if (s.exists()) await setDoc(doc(db,'obras_imagens',`${novoId}_${a.key}`),{obraId:novoId,key:a.key,img:s.data().img});
+      } catch(_){}
+    }));
+    status.textContent='A criar obra…';
+    await setDoc(doc(db,'obras',novoId),{...d,id:novoId,nome:novoNome,criadoEm:new Date().toISOString(),updatedAt:new Date().toISOString(),conclusao:null,aprovacao:null,estado:'em_obra'});
+    document.getElementById('modal-dup').classList.remove('open');
+    toast('Obra duplicada ✓','ok');
+    await loadObras();
+  } catch(e) { btn.disabled=false; status.textContent='Erro: '+e.message; }
 };
 
 // ── TOAST ─────────────────────────────────────────
