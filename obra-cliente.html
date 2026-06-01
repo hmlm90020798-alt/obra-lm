@@ -532,6 +532,7 @@ function renderPins(idx){
     if (!h.cli && !h.label) return;
     const pw=document.createElement('div');
     pw.className='pin-wrap'; pw.style.left=h.x+'%'; pw.style.top=h.y+'%';
+    pw.dataset.hsId = h.id || String(i);
     pw.innerHTML=pinSVG(h.tipo,lbl,sz,S.tiposCustom);
     pw.addEventListener('click',ev=>{ev.stopPropagation();openPopup(h,pw,idx);});
     iw.appendChild(pw);
@@ -561,40 +562,39 @@ function openPopup(h,pw,slideIdx){
     ${h.cli?`<div class="pop-cli">${h.cli}</div>`:`<div class="pop-empty">—</div>`}
     ${linkBtns.join('')}`;
 
+  const inFS = S.fsMode;
   const isMobile = window.innerWidth <= 600;
+  const margin = 12;
+  const popW = Math.min(280, window.innerWidth - 32);
+  const popH = 160;
+  const tabH = inFS ? 0 : (isMobile ? 72 : 0);
 
-  if (isMobile) {
-    // Posicionar próximo do pin, dentro dos limites do ecrã
-    const img = document.querySelector(`#iw-${slideIdx} img`);
-    const stRect = stage.getBoundingClientRect();
-    const iRect = img ? img.getBoundingClientRect() : stRect;
-    const pinX = iRect.left + (h.x / 100) * iRect.width;
-    const pinY = iRect.top + (h.y / 100) * iRect.height;
-    const popW = Math.min(280, window.innerWidth - 32);
-    const popH = 160; // estimativa antes de render
-    const margin = 12;
-    const tabH = 52 + 20; // tab bar + safe area estimate
+  // Referência de imagem correcta
+  const img = inFS
+    ? document.querySelector('#fs-wrap .img-wrap img')
+    : document.querySelector(`#iw-${slideIdx} img`);
+  const ctRect = inFS
+    ? document.getElementById('fs-overlay').getBoundingClientRect()
+    : stage.getBoundingClientRect();
+  const iRect = img ? img.getBoundingClientRect() : ctRect;
 
+  const pinX = iRect.left + (h.x / 100) * iRect.width;
+  const pinY = iRect.top  + (h.y / 100) * iRect.height;
+
+  if (isMobile || inFS) {
     let left = pinX - popW / 2;
-    let top = pinY + 24; // abaixo do pin
-
-    // Ajustar horizontalmente
+    let top  = pinY + 24;
     left = Math.max(margin, Math.min(left, window.innerWidth - popW - margin));
-    // Se o popup sai pela base, colocar acima do pin
-    if (top + popH + tabH > window.innerHeight) {
-      top = Math.max(margin, pinY - popH - 24);
-    }
-    // Garantir que não fica por baixo da tab bar
-    const maxTop = window.innerHeight - tabH - popH - margin;
-    top = Math.min(top, maxTop);
+    if (top + popH + tabH > window.innerHeight) top = Math.max(margin, pinY - popH - 24);
+    top = Math.min(top, window.innerHeight - tabH - popH - margin);
 
+    popup.style.position = 'fixed';
     popup.style.left = left + 'px';
     popup.style.top  = top  + 'px';
     popup.style.right = 'auto';
     popup.style.bottom = 'auto';
-    document.body.appendChild(popup);
+    (inFS ? document.getElementById('fs-overlay') : document.body).appendChild(popup);
 
-    // ── Drag touch ──
     let dragStartX, dragStartY, popStartLeft, popStartTop, isDragging = false, hasDragged = false;
     popup.addEventListener('touchstart', ev => {
       if (ev.target.closest('button')) return;
@@ -612,7 +612,6 @@ function openPopup(h,pw,slideIdx){
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasDragged = true;
       let newLeft = popStartLeft + dx;
       let newTop  = popStartTop  + dy;
-      // limites
       newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth - popW - margin));
       newTop  = Math.max(margin, Math.min(newTop,  window.innerHeight - tabH - 60));
       popup.style.left = newLeft + 'px';
@@ -626,15 +625,11 @@ function openPopup(h,pw,slideIdx){
     addMouseDrag(popup, margin, window.innerWidth - popW - margin, margin, window.innerHeight - tabH - 60, false);
 
   } else {
-    // Desktop — comportamento original junto ao pin
-    const img = document.querySelector(`#iw-${slideIdx} img`);
-    const stRect = stage.getBoundingClientRect();
-    const iRect = img ? img.getBoundingClientRect() : stRect;
-    const px = iRect.left - stRect.left + (h.x / 100) * iRect.width;
-    const py = iRect.top  - stRect.top  + (h.y / 100) * iRect.height;
-    popup.style.cssText = `position:absolute;left:${Math.min(px+14,stRect.width-232)}px;top:${py+160+20>stRect.height?Math.max(4,py-160-10):py+14}px`;
+    const px = iRect.left - ctRect.left + (h.x / 100) * iRect.width;
+    const py = iRect.top  - ctRect.top  + (h.y / 100) * iRect.height;
+    popup.style.cssText = `position:absolute;left:${Math.min(px+14,ctRect.width-232)}px;top:${py+160+20>ctRect.height?Math.max(4,py-160-10):py+14}px`;
     stage.appendChild(popup);
-    addMouseDrag(popup, 4, stRect.width - 264, 4, stRect.height - 60, true);
+    addMouseDrag(popup, 4, ctRect.width - 264, 4, ctRect.height - 60, true);
   }
 
   S.popup = {id: h.id};
@@ -775,28 +770,42 @@ function fsApplyZoom() {
 window.openFullscreen = function() {
   const iw = document.getElementById('iw-' + S.idx);
   if (!iw) return;
+  closePopup();
   const clone = iw.cloneNode(true);
   clone.style.transform = '';
+  const key = S.alcados[S.idx]?.key;
+  const hss = key ? (S.hotspots[key] || []) : [];
+  clone.querySelectorAll('.pin-wrap').forEach(pw => {
+    const h = hss.find(hs => (hs.id || String(hss.indexOf(hs))) === pw.dataset.hsId)
+           || hss.find((_, i) => String(i) === pw.dataset.hsId);
+    if (h) pw.addEventListener('click', ev => { ev.stopPropagation(); openPopup(h, pw, S.idx); });
+  });
   const fsWrap = document.getElementById('fs-wrap');
   fsWrap.innerHTML = '';
   fsWrap.appendChild(clone);
   FS.scale = 1; FS.x = 0; FS.y = 0;
+  S.fsMode = true;
   document.getElementById('fs-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
 
 window.closeFullscreen = function() {
+  closePopup();
+  S.fsMode = false;
   document.getElementById('fs-overlay').classList.remove('open');
   document.getElementById('fs-wrap').innerHTML = '';
   document.body.style.overflow = '';
   FS.scale = 1; FS.x = 0; FS.y = 0;
 };
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.getElementById('popup')) closePopup(); else closeFullscreen(); } });
 
 const fsOv = document.getElementById('fs-overlay');
 fsOv.addEventListener('touchstart', e => {
-  if (e.target === fsOv) { closeFullscreen(); return; }
+  if (e.target === fsOv || e.target === document.getElementById('fs-wrap')) {
+    if (document.getElementById('popup')) { closePopup(); return; }
+    closeFullscreen(); return;
+  }
   if (e.touches.length === 2) {
     FS.isPinch = true;
     FS.pinchDist = Math.hypot(
@@ -805,6 +814,10 @@ fsOv.addEventListener('touchstart', e => {
     e.preventDefault();
   } else if (e.touches.length === 1 && FS.scale > 1) {
     FS.panStart = { x: e.touches[0].clientX - FS.x, y: e.touches[0].clientY - FS.y };
+  } else if (e.touches.length === 1) {
+    if (!e.target.closest('.pin-wrap') && !e.target.closest('.popup')) {
+      if (document.getElementById('popup')) { closePopup(); return; }
+    }
   }
 }, {passive:false});
 
@@ -819,6 +832,7 @@ fsOv.addEventListener('touchmove', e => {
     fsApplyZoom();
   } else if (e.touches.length === 1 && FS.scale > 1 && FS.panStart) {
     e.preventDefault();
+    if (document.getElementById('popup')) closePopup();
     FS.x = e.touches[0].clientX - FS.panStart.x;
     FS.y = e.touches[0].clientY - FS.panStart.y;
     fsApplyZoom();
@@ -835,8 +849,9 @@ fsOv.addEventListener('wheel', e => {
 }, {passive:false});
 
 fsOv.addEventListener('mousedown', e => {
-  if (e.target === fsOv || e.target.closest('#fs-close')) return;
+  if (e.target === fsOv || e.target.closest('#fs-close') || e.target.closest('.popup') || e.target.closest('.pin-wrap')) return;
   if (FS.scale <= 1) return;
+  if (document.getElementById('popup')) closePopup();
   const startX = e.clientX - FS.x, startY = e.clientY - FS.y;
   const onMove = ev => { FS.x = ev.clientX - startX; FS.y = ev.clientY - startY; fsApplyZoom(); };
   const onUp   = ()  => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };

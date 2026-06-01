@@ -564,6 +564,7 @@ function renderPins(idx) {
     const t=getTipo(h.tipo,S.tiposCustom);
     const pw=document.createElement('div');
     pw.className='pin-wrap'; pw.style.left=h.x+'%'; pw.style.top=h.y+'%';
+    pw.dataset.hsId = h.id || String(i);
     // Anel pulsante
     const outer=document.createElement('div');
     outer.className='pin-outer';
@@ -633,7 +634,6 @@ function openPopup(h,pw,slideIdx) {
   const popup=document.createElement('div');
   popup.className='popup'; popup.id='popup';
 
-  // Construir botões de link
   const alcadoDestino = h.linkAlcado ? S.alcados.find(a=>a.key===h.linkAlcado) : null;
   const linkBtns = [];
   if (h.url) linkBtns.push(`<button onclick="openUrlModal('${h.url.replace(/'/g,"\'")}','${h.label.replace(/'/g,"\'")}');closePopup()" style="display:flex;align-items:center;gap:.4rem;width:100%;padding:.42rem .65rem;background:var(--adim);border:1px solid rgba(79,124,255,.3);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:.7rem;cursor:pointer;transition:all .15s">🔗 Ver referência</button>`);
@@ -657,32 +657,42 @@ function openPopup(h,pw,slideIdx) {
       ${linkBtns.length?`<div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)">${linkBtns.join('')}</div>`:''}
     </div>`;
 
+  // Contentor e referência de imagem — stage normal ou fullscreen
+  const inFS = S.fsMode;
+  const container = inFS ? document.getElementById('fs-overlay') : null;
+  const fsIw = inFS ? document.querySelector('#fs-wrap .img-wrap') : null;
+  const img = inFS ? fsIw?.querySelector('img') : document.querySelector(`#iw-${slideIdx} img`);
+  const ctRect = inFS ? document.getElementById('fs-overlay').getBoundingClientRect() : stage.getBoundingClientRect();
+  const iRect = img ? img.getBoundingClientRect() : ctRect;
+
   const isMobile = window.innerWidth <= 600;
-  const img = document.querySelector(`#iw-${slideIdx} img`);
-  const stRect = stage.getBoundingClientRect();
-  const iRect = img ? img.getBoundingClientRect() : stRect;
+  const margin = 12;
+  const popW = Math.min(280, window.innerWidth - 32);
+  const popH = 180;
+  // No fullscreen não há tab bar
+  const tabH = inFS ? 0 : (isMobile ? 72 : 0);
 
-  if (isMobile) {
-    const pinX = iRect.left + (h.x / 100) * iRect.width;
-    const pinY = iRect.top  + (h.y / 100) * iRect.height;
-    const popW = Math.min(280, window.innerWidth - 32);
-    const popH = 180;
-    const margin = 12;
-    const tabH = 52 + 20;
+  // Posição absoluta na viewport do pin
+  const pinX = iRect.left + (h.x / 100) * iRect.width;
+  const pinY = iRect.top  + (h.y / 100) * iRect.height;
 
+  if (isMobile || inFS) {
+    // Posição fixed na viewport
     let left = pinX - popW / 2;
     let top  = pinY + 24;
-    left = Math.max(margin, Math.min(left, window.innerWidth - popW - margin));
+    left = Math.max(margin, Math.min(left, window.innerWidth  - popW - margin));
     if (top + popH + tabH > window.innerHeight) top = Math.max(margin, pinY - popH - 24);
     top = Math.min(top, window.innerHeight - tabH - popH - margin);
 
+    popup.style.position = 'fixed';
     popup.style.left   = left + 'px';
     popup.style.top    = top  + 'px';
     popup.style.right  = 'auto';
     popup.style.bottom = 'auto';
-    document.body.appendChild(popup);
+    // No fullscreen appendar ao overlay (z-index acima), senão ao body
+    (inFS ? document.getElementById('fs-overlay') : document.body).appendChild(popup);
 
-    // Drag touch (mobile)
+    // Drag touch
     let dragStartX, dragStartY, popStartLeft, popStartTop, isDragging = false, hasDragged = false;
     popup.addEventListener('touchstart', ev => {
       if (ev.target.closest('button')) return;
@@ -700,7 +710,7 @@ function openPopup(h,pw,slideIdx) {
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasDragged = true;
       let newLeft = popStartLeft + dx;
       let newTop  = popStartTop  + dy;
-      newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth - popW - margin));
+      newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth  - popW - margin));
       newTop  = Math.max(margin, Math.min(newTop,  window.innerHeight - tabH - 60));
       popup.style.left = newLeft + 'px';
       popup.style.top  = newTop  + 'px';
@@ -710,23 +720,20 @@ function openPopup(h,pw,slideIdx) {
       isDragging = false;
       if (hasDragged) { ev.stopPropagation(); hasDragged = false; }
     }, {passive:true});
-    // Drag mouse (quando em browser desktop mas viewport mobile)
     addMouseDrag(popup, margin, window.innerWidth - popW - margin, margin, window.innerHeight - tabH - 60, false);
 
   } else {
-    // Desktop — posicionamento junto ao pin
-    const px = iRect.left - stRect.left + (h.x / 100) * iRect.width;
-    const py = iRect.top  - stRect.top  + (h.y / 100) * iRect.height;
+    // Desktop normal — relativo ao stage
+    const px = iRect.left - ctRect.left + (h.x / 100) * iRect.width;
+    const py = iRect.top  - ctRect.top  + (h.y / 100) * iRect.height;
     popup.style.position = 'absolute';
-    popup.style.left = Math.min(px + 14, stRect.width - 252) + 'px';
-    popup.style.top  = (py + 200 > stRect.height) ? Math.max(4, py - 210) + 'px' : (py + 14) + 'px';
+    popup.style.left = Math.min(px + 14, ctRect.width - 252) + 'px';
+    popup.style.top  = (py + 200 > ctRect.height) ? Math.max(4, py - 210) + 'px' : (py + 14) + 'px';
     stage.appendChild(popup);
-    // Drag mouse desktop — coordenadas relativas ao stage
-    addMouseDrag(popup, 4, stRect.width - 284, 4, stRect.height - 60, true);
+    addMouseDrag(popup, 4, ctRect.width - 284, 4, ctRect.height - 60, true);
   }
 
   S.activePopup = {id: h.id};
-  // Mostrar linha de destaque se existir
   if (h.linhas?.length || h.linha) showDestaque(h, slideIdx);
 }
 
@@ -936,8 +943,7 @@ window.confirmarConclusao=async()=>{
 const FS = { scale:1, x:0, y:0, isPinch:false, pinchDist:0, panStart:null };
 
 function fsApplyZoom() {
-  const wrap = document.getElementById('fs-wrap');
-  const iw = wrap?.querySelector('.img-wrap');
+  const iw = document.querySelector('#fs-wrap .img-wrap');
   if (!iw) return;
   iw.style.transform = FS.scale > 1
     ? `scale(${FS.scale}) translate(${FS.x/FS.scale}px,${FS.y/FS.scale}px)`
@@ -947,32 +953,44 @@ function fsApplyZoom() {
 window.openFullscreen = function() {
   const iw = document.getElementById('iw-' + S.idx);
   if (!iw) return;
-  // Clonar o img-wrap completo (com pins já renderizados)
+  closePopup();
   const clone = iw.cloneNode(true);
   clone.style.transform = '';
-  // Remover listeners antigos do clone (pins têm onclick inline — manter)
+  const key = S.alcados[S.idx]?.key;
+  const hss = key ? (S.hotspots[key] || []) : [];
+  // Reanexar listeners aos pins do clone via hsId
+  clone.querySelectorAll('.pin-wrap').forEach(pw => {
+    const h = hss.find(hs => (hs.id || String(hss.indexOf(hs))) === pw.dataset.hsId)
+           || hss.find((_, i) => String(i) === pw.dataset.hsId);
+    if (h) pw.addEventListener('click', ev => { ev.stopPropagation(); openPopup(h, pw, S.idx); });
+  });
   const fsWrap = document.getElementById('fs-wrap');
   fsWrap.innerHTML = '';
   fsWrap.appendChild(clone);
-  // Reset zoom
   FS.scale = 1; FS.x = 0; FS.y = 0;
+  S.fsMode = true;
   document.getElementById('fs-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
 
 window.closeFullscreen = function() {
+  closePopup();
+  S.fsMode = false;
   document.getElementById('fs-overlay').classList.remove('open');
   document.getElementById('fs-wrap').innerHTML = '';
   document.body.style.overflow = '';
   FS.scale = 1; FS.x = 0; FS.y = 0;
 };
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.getElementById('popup')) closePopup(); else closeFullscreen(); } });
 
-// Touch no overlay — pinch zoom + pan
 const fsOv = document.getElementById('fs-overlay');
 fsOv.addEventListener('touchstart', e => {
-  if (e.target === fsOv) { closeFullscreen(); return; }
+  // Toque directo no fundo do overlay (não em pin, popup ou botão)
+  if (e.target === fsOv || e.target === document.getElementById('fs-wrap')) {
+    if (document.getElementById('popup')) { closePopup(); return; }
+    closeFullscreen(); return;
+  }
   if (e.touches.length === 2) {
     FS.isPinch = true;
     FS.pinchDist = Math.hypot(
@@ -981,6 +999,11 @@ fsOv.addEventListener('touchstart', e => {
     e.preventDefault();
   } else if (e.touches.length === 1 && FS.scale > 1) {
     FS.panStart = { x: e.touches[0].clientX - FS.x, y: e.touches[0].clientY - FS.y };
+  } else if (e.touches.length === 1) {
+    // Toque na imagem sem zoom — fechar popup se aberto
+    if (!e.target.closest('.pin-wrap') && !e.target.closest('.popup')) {
+      if (document.getElementById('popup')) { closePopup(); return; }
+    }
   }
 }, {passive:false});
 
@@ -995,6 +1018,7 @@ fsOv.addEventListener('touchmove', e => {
     fsApplyZoom();
   } else if (e.touches.length === 1 && FS.scale > 1 && FS.panStart) {
     e.preventDefault();
+    if (document.getElementById('popup')) closePopup();
     FS.x = e.touches[0].clientX - FS.panStart.x;
     FS.y = e.touches[0].clientY - FS.panStart.y;
     fsApplyZoom();
@@ -1003,7 +1027,6 @@ fsOv.addEventListener('touchmove', e => {
 
 fsOv.addEventListener('touchend', () => { FS.isPinch = false; FS.panStart = null; }, {passive:true});
 
-// Scroll wheel no desktop
 fsOv.addEventListener('wheel', e => {
   e.preventDefault();
   FS.scale = Math.min(8, Math.max(1, FS.scale * (e.deltaY < 0 ? 1.15 : 0.87)));
@@ -1011,10 +1034,10 @@ fsOv.addEventListener('wheel', e => {
   fsApplyZoom();
 }, {passive:false});
 
-// Mouse drag no desktop
 fsOv.addEventListener('mousedown', e => {
-  if (e.target === fsOv || e.target.closest('#fs-close')) return;
+  if (e.target === fsOv || e.target.closest('#fs-close') || e.target.closest('.popup') || e.target.closest('.pin-wrap')) return;
   if (FS.scale <= 1) return;
+  if (document.getElementById('popup')) closePopup();
   const startX = e.clientX - FS.x, startY = e.clientY - FS.y;
   const onMove = ev => { FS.x = ev.clientX - startX; FS.y = ev.clientY - startY; fsApplyZoom(); };
   const onUp   = ()  => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
