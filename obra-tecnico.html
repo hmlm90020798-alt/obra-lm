@@ -467,11 +467,12 @@ document.getElementById('stage').addEventListener('wheel',e=>{e.preventDefault()
 
 const stage=document.getElementById('stage');
 stage.addEventListener('touchstart',e=>{
+  // Fechar popup ao tocar na imagem (pan, pinch, swipe)
+  if (document.getElementById('popup')&&!e.target.closest('.pin-wrap')&&!e.target.closest('.popup')) closePopup();
   if (e.touches.length===2){S.isPinch=true;S.pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);e.preventDefault();}
   else if (e.touches.length===1){
     if (S.Z.scale>1) S.panStart={x:e.touches[0].clientX-S.Z.x,y:e.touches[0].clientY-S.Z.y};
     else S.swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
-    S.tapStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
     S.isPinch=false;
   }
 },{passive:false});
@@ -481,13 +482,8 @@ stage.addEventListener('touchmove',e=>{
 },{passive:false});
 stage.addEventListener('touchend',e=>{
   if (S.isPinch){S.isPinch=false;return;}
-  const t=e.changedTouches[0];
-  const moved=S.tapStart&&(Math.abs(t.clientX-S.tapStart.x)>8||Math.abs(t.clientY-S.tapStart.y)>8);
-  S.tapStart=null;
-  // Fechar popup se foi tap limpo fora do popup e do pin
-  if (!moved&&document.getElementById('popup')&&!e.target.closest('.pin-wrap')&&!e.target.closest('.popup')) closePopup();
   if (S.Z.scale>1||!S.swipeStart) return;
-  const dx=t.clientX-S.swipeStart.x,dy=t.clientY-S.swipeStart.y;
+  const dx=e.changedTouches[0].clientX-S.swipeStart.x,dy=e.changedTouches[0].clientY-S.swipeStart.y;
   if (Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45) goTo(S.idx+(dx<0?1:-1));
   S.swipeStart=null;
 },{passive:true});
