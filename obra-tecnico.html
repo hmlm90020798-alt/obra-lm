@@ -42,7 +42,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .h-badge.concluido{background:var(--gdim);color:var(--green);border:1px solid rgba(45,216,152,.25);}
 
 /* ── NAV BAR ── */
-.nav-bar{position:fixed;top:52px;left:0;right:0;z-index:90;display:flex;align-items:center;gap:.4rem;padding:.45rem .75rem;height:44px;background:var(--surface);border-bottom:1px solid var(--border);}
+.nav-bar{position:fixed;top:52px;left:0;right:0;z-index:90;display:flex;align-items:center;gap:.4rem;padding:.45rem .75rem;height:48px;background:var(--surface);border-bottom:1px solid var(--border);}
 .nav-btn{width:30px;height:30px;border-radius:5px;background:var(--raised);border:1px solid var(--border);color:var(--text2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .nav-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
 .nav-btn:disabled{opacity:.28;cursor:default;}
@@ -74,7 +74,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .slide.enter-l{transform:translateX(5%) scale(.97);}
 .slide.enter-r{transform:translateX(-5%) scale(.97);}
 .img-wrap{position:relative;display:inline-block;line-height:0;max-width:100%;max-height:100%;}
-.img-wrap img{display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;}
+.img-wrap img{display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;touch-action:none;}
 .img-wrap.planta img{filter:invert(1) brightness(.88) contrast(1.05);}
 .anot-svg{position:absolute;top:0;left:0;pointer-events:all;overflow:visible;}
 .anot-text{font-family:'DM Mono',monospace;}
@@ -102,12 +102,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 @keyframes pulse-ring{0%{transform:translate(-50%,-50%) scale(.8);opacity:.4;}70%{transform:translate(-50%,-50%) scale(1.8);opacity:0;}100%{transform:translate(-50%,-50%) scale(1.8);opacity:0;}}
 
 /* ── POPUP TÉCNICO ── */
-.popup{position:absolute;z-index:60;width:240px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.7);overflow:hidden;animation:popIn .18s cubic-bezier(.16,1,.3,1);}
+.popup{position:absolute;z-index:60;width:min(280px,85vw);background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.7);overflow:hidden;animation:popIn .18s cubic-bezier(.16,1,.3,1);}
 @keyframes popIn{from{opacity:0;transform:scale(.92) translateY(6px);}to{opacity:1;transform:scale(1) translateY(0);}}
 .popup-header{padding:.75rem 1rem .6rem;display:flex;align-items:flex-start;gap:.6rem;border-bottom:1px solid var(--border);}
 .popup-icon-wrap{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .popup-meta{flex:1;min-width:0;}
-.popup-label{font-size:.85rem;font-weight:600;line-height:1.3;margin-bottom:.15rem;}
+.popup-label{font-size:.95rem;font-weight:700;line-height:1.3;margin-bottom:.2rem;}
 .popup-tipo{font-size:.6rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
 .popup-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.9rem;padding:.15rem;flex-shrink:0;transition:color .15s;margin-top:-.1rem;}
 .popup-close:hover{color:var(--text);}
@@ -115,7 +115,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .popup-field{margin-bottom:.55rem;}
 .popup-field:last-child{margin-bottom:0;}
 .popup-field-label{font-size:.58rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:.2rem;}
-.popup-field-value{font-size:.78rem;color:var(--text2);line-height:1.5;font-family:var(--mono);}
+.popup-field-value{font-size:.82rem;color:var(--text2);line-height:1.6;font-family:var(--mono);}
 .popup-cota{display:inline-flex;align-items:center;gap:.35rem;background:var(--gdim);border:1px solid rgba(45,216,152,.2);border-radius:5px;padding:.28rem .6rem;font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--green);}
 
 /* Legenda */
@@ -124,7 +124,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 /* Zoom */
 .zoom-btns{position:absolute;top:.5rem;right:.65rem;z-index:40;display:flex;gap:.25rem;}
-.zoom-btn{width:30px;height:30px;border-radius:5px;background:rgba(17,19,24,.85);border:1px solid var(--border);color:var(--text2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(4px);}
+.zoom-btn{width:38px;height:38px;border-radius:8px;background:rgba(17,19,24,.9);border:1px solid var(--border);color:var(--text2);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(4px);}
 .zoom-btn:hover{border-color:var(--accent);color:var(--accent);}
 
 /* ── PANELS ── */
@@ -182,6 +182,52 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 #toast.ok{border-color:var(--green);color:var(--green);}
 #toast.err{border-color:var(--red);color:var(--red);}
+
+@media (max-width: 600px) {
+  /* ── Header mais compacto ── */
+  .header       { height: 44px; padding: 0 .75rem; gap: .5rem; }
+  .header-title { font-size: .85rem; }
+  .header-sub   { display: none; }
+
+  /* ── Nav bar mais fina ── */
+  .nav-bar { height: 40px; top: 44px; padding: .3rem .6rem; }
+
+  /* ── Stage ocupa o máximo ── */
+  .stage  { top: 84px; bottom: calc(52px + env(safe-area-inset-bottom)); }
+  .panel  { top: 84px; bottom: calc(52px + env(safe-area-inset-bottom)); }
+
+  /* ── Tab bar ── */
+  .btabs  { height: calc(52px + env(safe-area-inset-bottom)); }
+  .btab   { font-size: .62rem; gap: 3px; }
+  .btab svg { width: 19px; height: 19px; }
+
+  /* ── Popup fixo em baixo, acima da tab bar ── */
+  .popup {
+    position: fixed !important;
+    bottom: calc(58px + env(safe-area-inset-bottom)) !important;
+    left: 16px !important;
+    right: 16px !important;
+    top: auto !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 42vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 12px 12px;
+    z-index: 200 !important;
+  }
+  .popup-body { max-height: 28vh; overflow-y: auto; }
+
+  /* ── Botões zoom maiores ── */
+  .zoom-btns { top: .4rem; right: .5rem; gap: .3rem; }
+  .zoom-btn  { width: 40px; height: 40px; border-radius: 10px; font-size: 1.15rem; }
+
+  /* ── Legenda mais compacta ── */
+  .legenda { font-size: .65rem; gap: .25rem .5rem; padding: .3rem .5rem; }
+
+  /* ── Pins maiores para dedos ── */
+  .pin { width: 32px; height: 32px; font-size: .75rem; }
+}
 </style>
 </head>
 <body>
