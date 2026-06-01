@@ -432,6 +432,7 @@ stage.addEventListener('touchstart',e=>{
   else if(e.touches.length===1){
     if(S.Z.scale>1) S.panStart={x:e.touches[0].clientX-S.Z.x,y:e.touches[0].clientY-S.Z.y};
     else S.swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
+    S.tapStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
     S.isPinch=false;
   }
 },{passive:false});
@@ -441,8 +442,12 @@ stage.addEventListener('touchmove',e=>{
 },{passive:false});
 stage.addEventListener('touchend',e=>{
   if(S.isPinch){S.isPinch=false;return;}
+  const t=e.changedTouches[0];
+  const moved=S.tapStart&&(Math.abs(t.clientX-S.tapStart.x)>8||Math.abs(t.clientY-S.tapStart.y)>8);
+  S.tapStart=null;
+  if(!moved&&document.getElementById('popup')&&!e.target.closest('.pin-wrap')&&!e.target.closest('.popup')) closePopup();
   if(S.Z.scale>1||!S.swipeStart) return;
-  const dx=e.changedTouches[0].clientX-S.swipeStart.x,dy=e.changedTouches[0].clientY-S.swipeStart.y;
+  const dx=t.clientX-S.swipeStart.x,dy=t.clientY-S.swipeStart.y;
   if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45) goTo(S.idx+(dx<0?1:-1));
   S.swipeStart=null;
 },{passive:true});
@@ -528,21 +533,23 @@ function openPopup(h,pw,slideIdx){
     document.body.appendChild(popup);
 
     // ── Drag touch ──
-    let dragStartX, dragStartY, popStartLeft, popStartTop, isDragging = false;
+    let dragStartX, dragStartY, popStartLeft, popStartTop, isDragging = false, hasDragged = false;
     popup.addEventListener('touchstart', ev => {
       if (ev.target.closest('button')) return;
       const t0 = ev.touches[0];
       dragStartX = t0.clientX; dragStartY = t0.clientY;
       const r = popup.getBoundingClientRect();
       popStartLeft = r.left; popStartTop = r.top;
-      isDragging = true;
+      isDragging = true; hasDragged = false;
       ev.stopPropagation();
     }, {passive:true});
     popup.addEventListener('touchmove', ev => {
       if (!isDragging) return;
       const t0 = ev.touches[0];
-      let newLeft = popStartLeft + (t0.clientX - dragStartX);
-      let newTop  = popStartTop  + (t0.clientY - dragStartY);
+      const dx = t0.clientX - dragStartX, dy = t0.clientY - dragStartY;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasDragged = true;
+      let newLeft = popStartLeft + dx;
+      let newTop  = popStartTop  + dy;
       // limites
       newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth - popW - margin));
       newTop  = Math.max(margin, Math.min(newTop,  window.innerHeight - tabH - 60));
@@ -550,7 +557,10 @@ function openPopup(h,pw,slideIdx){
       popup.style.top  = newTop  + 'px';
       ev.preventDefault();
     }, {passive:false});
-    popup.addEventListener('touchend', () => { isDragging = false; }, {passive:true});
+    popup.addEventListener('touchend', ev => {
+      isDragging = false;
+      if (hasDragged) { ev.stopPropagation(); hasDragged = false; }
+    }, {passive:true});
 
   } else {
     // Desktop — comportamento original junto ao pin
@@ -595,8 +605,6 @@ function showDestaque(h,slideIdx){
 }
 function hideDestaque(){S._destaqueH=null;S._destaqueIdx=null;const svg=document.getElementById('destaque-svg');if(!svg)return;svg.querySelectorAll('.destaque-line').forEach(el=>{el.classList.remove('visible');setTimeout(()=>el.remove(),380);});}
 function closePopup(){document.getElementById('popup')?.remove();document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));S.popup=null;hideDestaque();}
-// Fechar popup ao clicar fora — body também (mobile)
-document.body.addEventListener('click',ev=>{if(document.getElementById('popup')&&!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
 window.closePopup=closePopup;
 window.openUrlModal=(url,titulo)=>{ window.open(url,'_blank','noopener'); };
 window.closeUrlModal=()=>{};
