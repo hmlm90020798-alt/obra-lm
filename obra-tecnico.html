@@ -156,7 +156,42 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .conclusao.done .conclusao-title{color:var(--green);}
 .conclusao-ts{font-family:var(--mono);font-size:.72rem;color:var(--text2);}
 
-/* ── BOTTOM TABS ── */
+/* ── FULLSCREEN OVERLAY ── */
+#fs-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 999;
+  background: #000;
+  align-items: center; justify-content: center;
+}
+#fs-overlay.open { display: flex; }
+#fs-overlay img {
+  max-width: 100vw; max-height: 100vh;
+  width: auto; height: auto;
+  object-fit: contain; touch-action: none;
+  filter: invert(1) brightness(.88) contrast(1.05); /* será sobrescrito por JS se não for planta */
+}
+#fs-close {
+  position: fixed; top: .75rem; right: .75rem; z-index: 1000;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(17,19,24,.9); border: 1px solid var(--border2);
+  color: var(--text); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+}
+.zoom-btn-fs {
+  position: absolute; bottom: .75rem; right: .65rem;
+}
+
+/* ── Botão expand na stage ── */
+#btn-expand {
+  position: absolute; bottom: .5rem; left: .65rem; z-index: 40;
+  width: 38px; height: 38px; border-radius: 8px;
+  background: rgba(17,19,24,.9); border: 1px solid var(--border);
+  color: var(--text2); font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px); transition: all .15s;
+}
+#btn-expand:hover { border-color: var(--accent); color: var(--accent); }
 .btabs{position:fixed;bottom:0;left:0;right:0;z-index:100;display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom);height:calc(50px + env(safe-area-inset-bottom));}
 .btab{flex:1;border:none;background:transparent;color:var(--text3);font-family:var(--sans);font-size:.6rem;font-weight:500;cursor:pointer;transition:color .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;padding:.5rem .25rem .4rem;}
 .btab.active{color:var(--accent);}
@@ -272,7 +307,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <button class="zoom-btn" onclick="zoom(0)">⊙</button>
     <button class="zoom-btn" onclick="zoom(0.74)">－</button>
   </div>
+  <button id="btn-expand" onclick="openFullscreen()" title="Ver em ecrã inteiro">⛶</button>
   <div class="legenda" id="legenda"></div>
+</div>
+
+<!-- FULLSCREEN OVERLAY -->
+<div id="fs-overlay">
+  <button id="fs-close" onclick="closeFullscreen()">✕</button>
+  <img id="fs-img" src="" alt="">
 </div>
 
 <div class="panel" id="panel-materiais">
@@ -881,6 +923,26 @@ window.confirmarConclusao=async()=>{
     toast('Conclusão registada ✓','ok');
   }catch(e){btn.disabled=false;btn.textContent='Marcar como concluído';toast('Erro: '+e.message,'err');}
 };
+
+/* ── FULLSCREEN ── */
+window.openFullscreen = function() {
+  const img = document.querySelector(`#iw-${S.idx} img`);
+  if (!img) return;
+  const fsImg = document.getElementById('fs-img');
+  fsImg.src = img.src;
+  const isPlanta = S.alcados[S.idx]?.tipo === 'planta';
+  fsImg.style.filter = isPlanta ? 'invert(1) brightness(.88) contrast(1.05)' : 'none';
+  document.getElementById('fs-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+window.closeFullscreen = function() {
+  document.getElementById('fs-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
+document.getElementById('fs-overlay').addEventListener('touchstart', e => {
+  if (e.target === document.getElementById('fs-overlay')) closeFullscreen();
+}, {passive:true});
 
 /* ── TOAST ── */
 function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+(type||'');clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2500);}
