@@ -407,12 +407,17 @@ function updateNav() {
 
 function buildNavDropdown() {
   const dd=document.getElementById('nav-dropdown');
-  dd.innerHTML=S.alcados.map((a,i)=>`
-    <div class="nav-dd-item${i===S.idx?' active':''}" onclick="goTo(${i});closeNavDropdown()">
-      <span class="nav-dd-num">${i+1}</span>
-      <span class="nav-dd-name">${a.nome}</span>
-      ${i===S.idx?'<span class="nav-dd-check">✓</span>':''}
-    </div>`).join('');
+  dd.innerHTML='';
+  S.alcados.forEach((a,i)=>{
+    const item=document.createElement('div');
+    item.className='nav-dd-item'+(i===S.idx?' active':'');
+    item.innerHTML=`<span class="nav-dd-num">${i+1}</span><span class="nav-dd-name">${a.nome}</span>${i===S.idx?'<span class="nav-dd-check">✓</span>':''}`;
+    // usar touchend E click para cobrir mobile e desktop
+    const select=()=>{ goTo(i); closeNavDropdown(); };
+    item.addEventListener('touchend', ev=>{ ev.preventDefault(); select(); }, {passive:false});
+    item.addEventListener('click', select);
+    dd.appendChild(item);
+  });
 }
 
 function toggleNavDropdown(){
@@ -468,7 +473,7 @@ document.getElementById('stage').addEventListener('wheel',e=>{e.preventDefault()
 const stage=document.getElementById('stage');
 stage.addEventListener('touchstart',e=>{
   // Fechar popup ao tocar na imagem (pan, pinch, swipe)
-  if (document.getElementById('popup')&&!e.target.closest('.pin-wrap')&&!e.target.closest('.popup')) closePopup();
+  if(document.getElementById('popup')&&!e.target.closest('.pin-wrap')&&!e.target.closest('.popup')&&!e.target.closest('#nav-wrap')) closePopup();
   if (e.touches.length===2){S.isPinch=true;S.pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);e.preventDefault();}
   else if (e.touches.length===1){
     if (S.Z.scale>1) S.panStart={x:e.touches[0].clientX-S.Z.x,y:e.touches[0].clientY-S.Z.y};

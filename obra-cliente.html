@@ -389,7 +389,17 @@ function updateNav() {
   document.querySelectorAll('.nav-dd-item').forEach((el,i)=>el.classList.toggle('active',i===S.idx));
 }
 function buildNavDropdown(){
-  document.getElementById('nav-dropdown').innerHTML=S.alcados.map((a,i)=>`<div class="nav-dd-item${i===S.idx?' active':''}" onclick="goTo(${i});closeNavDropdown()"><span class="nav-dd-num">${i+1}</span><span class="nav-dd-name">${a.nome}</span>${i===S.idx?'<span class="nav-dd-check">✓</span>':''}</div>`).join('');
+  const dd=document.getElementById('nav-dropdown');
+  dd.innerHTML='';
+  S.alcados.forEach((a,i)=>{
+    const item=document.createElement('div');
+    item.className='nav-dd-item'+(i===S.idx?' active':'');
+    item.innerHTML=`<span class="nav-dd-num">${i+1}</span><span class="nav-dd-name">${a.nome}</span>${i===S.idx?'<span class="nav-dd-check">✓</span>':''}`;
+    const select=()=>{ goTo(i); closeNavDropdown(); };
+    item.addEventListener('touchend', ev=>{ ev.preventDefault(); select(); }, {passive:false});
+    item.addEventListener('click', select);
+    dd.appendChild(item);
+  });
 }
 function toggleNavDropdown(){const dd=document.getElementById('nav-dropdown'),curr=document.getElementById('nav-current');if(dd.classList.contains('open')){closeNavDropdown();}else{buildNavDropdown();dd.classList.add('open');curr.classList.add('open');}}
 function closeNavDropdown(){document.getElementById('nav-dropdown').classList.remove('open');document.getElementById('nav-current').classList.remove('open');}
