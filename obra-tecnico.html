@@ -201,20 +201,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   .btab   { font-size: .62rem; gap: 3px; }
   .btab svg { width: 19px; height: 19px; }
 
-  /* ── Popup fixo em baixo, acima da tab bar ── */
+  /* ── Popup flutuante e arrastável no mobile ── */
   .popup {
     position: fixed !important;
-    bottom: calc(58px + env(safe-area-inset-bottom)) !important;
-    left: 16px !important;
-    right: 16px !important;
-    top: auto !important;
-    transform: none !important;
-    width: auto !important;
-    max-width: none !important;
-    max-height: 42vh;
+    width: min(280px, calc(100vw - 32px)) !important;
+    max-height: 45vh;
     overflow-y: auto;
-    border-radius: 16px 16px 12px 12px;
+    border-radius: 14px;
     z-index: 200 !important;
+    touch-action: none;
+  }
+  /* Indicador de drag */
+  .popup::before {
+    content: '';
+    display: block;
+    width: 36px; height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    margin: 0 auto .55rem;
   }
   .popup-body { max-height: 28vh; overflow-y: auto; }
 
@@ -225,8 +229,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   /* ── Legenda mais compacta ── */
   .legenda { font-size: .65rem; gap: .25rem .5rem; padding: .3rem .5rem; }
 
-  /* ── Pins maiores para dedos ── */
-  .pin { width: 32px; height: 32px; font-size: .75rem; }
+  /* ── Pins menores no mobile ── */
+  .pin-inner { width: 26px !important; height: 26px !important; font-size: .68rem !important; }
+  .pin-outer { width: 26px !important; height: 26px !important; }
 }
 </style>
 </head>
@@ -550,17 +555,66 @@ function openPopup(h,pw,slideIdx) {
       ${linkBtns.length?`<div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)">${linkBtns.join('')}</div>`:''}
     </div>`;
 
-  // Posicionar popup
-  const img=document.querySelector(`#iw-${slideIdx} img`);
-  const stRect=stage.getBoundingClientRect();
-  const iRect=img?img.getBoundingClientRect():stRect;
-  const px=iRect.left-stRect.left+(h.x/100)*iRect.width;
-  const py=iRect.top-stRect.top+(h.y/100)*iRect.height;
-  popup.style.position='absolute';
-  popup.style.left=Math.min(px+14,stRect.width-252)+'px';
-  popup.style.top=(py+200>stRect.height)?Math.max(4,py-210)+'px':(py+14)+'px';
-  stage.appendChild(popup);
-  S.activePopup={id:h.id};
+  const isMobile = window.innerWidth <= 600;
+  const img = document.querySelector(`#iw-${slideIdx} img`);
+  const stRect = stage.getBoundingClientRect();
+  const iRect = img ? img.getBoundingClientRect() : stRect;
+
+  if (isMobile) {
+    const pinX = iRect.left + (h.x / 100) * iRect.width;
+    const pinY = iRect.top  + (h.y / 100) * iRect.height;
+    const popW = Math.min(280, window.innerWidth - 32);
+    const popH = 180;
+    const margin = 12;
+    const tabH = 52 + 20;
+
+    let left = pinX - popW / 2;
+    let top  = pinY + 24;
+    left = Math.max(margin, Math.min(left, window.innerWidth - popW - margin));
+    if (top + popH + tabH > window.innerHeight) top = Math.max(margin, pinY - popH - 24);
+    top = Math.min(top, window.innerHeight - tabH - popH - margin);
+
+    popup.style.left   = left + 'px';
+    popup.style.top    = top  + 'px';
+    popup.style.right  = 'auto';
+    popup.style.bottom = 'auto';
+    document.body.appendChild(popup);
+
+    // Drag touch
+    let dragStartX, dragStartY, popStartLeft, popStartTop, isDragging = false;
+    popup.addEventListener('touchstart', ev => {
+      if (ev.target.closest('button')) return;
+      const t0 = ev.touches[0];
+      dragStartX = t0.clientX; dragStartY = t0.clientY;
+      const r = popup.getBoundingClientRect();
+      popStartLeft = r.left; popStartTop = r.top;
+      isDragging = true;
+      ev.stopPropagation();
+    }, {passive:true});
+    popup.addEventListener('touchmove', ev => {
+      if (!isDragging) return;
+      const t0 = ev.touches[0];
+      let newLeft = popStartLeft + (t0.clientX - dragStartX);
+      let newTop  = popStartTop  + (t0.clientY - dragStartY);
+      newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth - popW - margin));
+      newTop  = Math.max(margin, Math.min(newTop,  window.innerHeight - tabH - 60));
+      popup.style.left = newLeft + 'px';
+      popup.style.top  = newTop  + 'px';
+      ev.preventDefault();
+    }, {passive:false});
+    popup.addEventListener('touchend', () => { isDragging = false; }, {passive:true});
+
+  } else {
+    // Desktop — posicionamento junto ao pin
+    const px = iRect.left - stRect.left + (h.x / 100) * iRect.width;
+    const py = iRect.top  - stRect.top  + (h.y / 100) * iRect.height;
+    popup.style.position = 'absolute';
+    popup.style.left = Math.min(px + 14, stRect.width - 252) + 'px';
+    popup.style.top  = (py + 200 > stRect.height) ? Math.max(4, py - 210) + 'px' : (py + 14) + 'px';
+    stage.appendChild(popup);
+  }
+
+  S.activePopup = {id: h.id};
   // Mostrar linha de destaque se existir
   if (h.linhas?.length || h.linha) showDestaque(h, slideIdx);
 }
@@ -627,7 +681,8 @@ window.goToAlcado=key=>{
   const idx=S.alcados.findIndex(a=>a.key===key);
   if (idx>=0) goTo(idx);
 };
-stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
+// Fechar popup ao clicar/tocar fora — cobre body (mobile) e stage (desktop)
+document.body.addEventListener('click',ev=>{if(document.getElementById('popup')&&!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
 
 /* ── ANOTAÇÕES ── */
 function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
