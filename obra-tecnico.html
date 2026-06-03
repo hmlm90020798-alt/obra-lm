@@ -522,33 +522,56 @@ function openPopup(h,pw,slideIdx) {
   stage.appendChild(popup);
   S.activePopup={id:h.id};
 
-  // Drag pelo header
+  // Drag pelo header — mouse e touch
   const ph = popup.querySelector('.popup-header');
   if (ph) {
-    ph.addEventListener('mousedown', ev => {
-      if (ev.target.closest('button')) return;
-      ev.preventDefault();
+    const startDrag = (clientX, clientY) => {
       popup.classList.add('dragging');
-      const startX = ev.clientX - popup.offsetLeft;
-      const startY = ev.clientY - popup.offsetTop;
+      const startX = clientX - popup.offsetLeft;
+      const startY = clientY - popup.offsetTop;
       const stRect = stage.getBoundingClientRect();
-      const onMove = mv => {
-        let nx = mv.clientX - startX;
-        let ny = mv.clientY - startY;
-        // Manter dentro do stage
-        nx = Math.max(0, Math.min(stRect.width  - popup.offsetWidth,  nx));
-        ny = Math.max(0, Math.min(stRect.height - popup.offsetHeight, ny));
+
+      const onMove = (cx, cy) => {
+        let nx = Math.max(0, Math.min(stRect.width  - popup.offsetWidth,  cx - startX));
+        let ny = Math.max(0, Math.min(stRect.height - popup.offsetHeight, cy - startY));
         popup.style.left = nx+'px';
         popup.style.top  = ny+'px';
       };
-      const onUp = () => {
+
+      // Mouse
+      const onMouseMove = mv => onMove(mv.clientX, mv.clientY);
+      const onMouseUp   = () => {
         popup.classList.remove('dragging');
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup',   onUp);
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup',   onMouseUp);
       };
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup',   onUp);
+      // Touch
+      const onTouchMove = tv => {
+        tv.preventDefault();
+        onMove(tv.touches[0].clientX, tv.touches[0].clientY);
+      };
+      const onTouchEnd = () => {
+        popup.classList.remove('dragging');
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend',  onTouchEnd);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup',   onMouseUp);
+      document.addEventListener('touchmove', onTouchMove, {passive:false});
+      document.addEventListener('touchend',  onTouchEnd);
+    };
+
+    ph.addEventListener('mousedown', ev => {
+      if (ev.target.closest('button')) return;
+      ev.preventDefault();
+      startDrag(ev.clientX, ev.clientY);
     });
+    ph.addEventListener('touchstart', ev => {
+      if (ev.target.closest('button')) return;
+      ev.stopPropagation(); // não propagar para o stage
+      startDrag(ev.touches[0].clientX, ev.touches[0].clientY);
+    }, {passive:true});
   }
 
   // Swap de imagem se definido
@@ -656,7 +679,14 @@ window.goToAlcado=key=>{
   const idx=S.alcados.findIndex(a=>a.key===key);
   if (idx>=0) goTo(idx);
 };
-stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
+// Fechar popup só se o clique não foi precedido de movimento
+let _stagePointerMoved = false;
+stage.addEventListener('pointerdown', ()=>{ _stagePointerMoved=false; });
+stage.addEventListener('pointermove', ()=>{ _stagePointerMoved=true; });
+stage.addEventListener('pointerup', ev=>{
+  if (_stagePointerMoved) return; // foi pan/swipe — não fechar
+  if (!ev.target.closest('.pin-wrap') && !ev.target.closest('.popup')) closePopup();
+});
 
 /* ── PINS NA CAMADA FIXA ── */
 function _calcPinPos(hx, hy) {
