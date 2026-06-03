@@ -446,9 +446,8 @@ function applyZoom(){
   if (!iw) return;
   iw.style.transform=S.Z.scale>1?`scale(${S.Z.scale}) translate(${S.Z.x/S.Z.scale}px,${S.Z.y/S.Z.scale}px)`:'';
   iw.style.cursor=S.Z.scale>1?'grab':'';
-  // Re-posicionar pins após zoom (debounce leve)
-  clearTimeout(S._zoomPinTimer);
-  S._zoomPinTimer=setTimeout(renderPinsFixed, 50);
+  // Re-posicionar pins em tempo real — sem debounce
+  renderPinsFixed();
 }
 function zoomReset(){S.Z={scale:1,x:0,y:0};applyZoom();}
 window.zoom=f=>{if(f===0){zoomReset();return;}S.Z.scale=Math.min(5,Math.max(1,+(S.Z.scale*f).toFixed(2)));if(S.Z.scale<=1){S.Z.x=0;S.Z.y=0;}applyZoom();};
@@ -660,19 +659,54 @@ window.goToAlcado=key=>{
 stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
 
 /* ── PINS NA CAMADA FIXA ── */
+function _calcPinPos(hx, hy) {
+  // Calcular posição absoluta do pin no stage
+  const img    = document.getElementById('main-img');
+  const stage  = document.getElementById('stage');
+  if (!img || !stage) return {px:0,py:0};
+  const iRect  = img.getBoundingClientRect();
+  const stRect = stage.getBoundingClientRect();
+  return {
+    px: (hx/100)*iRect.width  + (iRect.left-stRect.left),
+    py: (hy/100)*iRect.height + (iRect.top -stRect.top),
+  };
+}
+
+function updatePinPositions() {
+  // Actualizar só posições — sem recriar DOM (leve, para chamadas frequentes)
+  const pinsLayer = document.getElementById('pins-layer');
+  const pins = pinsLayer.querySelectorAll('.pin-wrap[data-hx]');
+  if (!pins.length) return false; // nada para actualizar
+  pins.forEach(pw => {
+    const hx = +pw.dataset.hx;
+    const hy = +pw.dataset.hy;
+    const {px,py} = _calcPinPos(hx,hy);
+    pw.style.left = px+'px';
+    pw.style.top  = py+'px';
+  });
+  return true;
+}
+
 function renderPinsFixed() {
   const pinsLayer = document.getElementById('pins-layer');
-  // Remover pins anteriores
-  pinsLayer.querySelectorAll('.pin-wrap').forEach(el=>el.remove());
-
   const idx = S.idx;
   const a   = S.alcados[idx];
   const key = a?.key;
   const hss = key?(S.hotspots[key]||[]):[];
-  if (!hss.length) return;
-
-  const img  = document.getElementById('main-img');
+  const img = document.getElementById('main-img');
   if (!img || !img.naturalWidth) return;
+
+  // Se os pins já existem para este alçado, só actualizar posições
+  const existing = pinsLayer.querySelectorAll('.pin-wrap[data-key]');
+  const existingKey = existing.length ? existing[0].dataset.key : null;
+  if (existingKey === key && existing.length === hss.length) {
+    updatePinPositions();
+    return;
+  }
+
+  // Recriar pins
+  pinsLayer.querySelectorAll('.pin-wrap').forEach(el=>el.remove());
+  if (!hss.length) return;
 
   let eq=0;
   hss.forEach((h,i)=>{
@@ -681,16 +715,14 @@ function renderPinsFixed() {
     const w=img.getBoundingClientRect().width||400;
     const sz=pinSz(h.pinSize||'m',w);
     const t=getTipo(h.tipo,S.tiposCustom);
+    const {px,py} = _calcPinPos(h.x,h.y);
 
     const pw=document.createElement('div');
-    pw.className='pin-wrap'; pw.style.cssText=`position:absolute;left:${h.x}%;top:${h.y}%;transform:translate(-50%,-50%);z-index:30;-webkit-tap-highlight-color:transparent;cursor:pointer;pointer-events:auto;`;
-
-    // Posicionar relativo à imagem dentro do pins-layer
-    const stRect=document.getElementById('stage').getBoundingClientRect();
-    const iRect=img.getBoundingClientRect();
-    const px=(h.x/100)*iRect.width + (iRect.left-stRect.left);
-    const py=(h.y/100)*iRect.height + (iRect.top-stRect.top);
-    pw.style.left=px+'px'; pw.style.top=py+'px'; pw.style.transform='translate(-50%,-50%)';
+    pw.className='pin-wrap';
+    pw.dataset.hx  = h.x;
+    pw.dataset.hy  = h.y;
+    pw.dataset.key = key;
+    pw.style.cssText=`position:absolute;left:${px}px;top:${py}px;transform:translate(-50%,-50%);z-index:30;-webkit-tap-highlight-color:transparent;cursor:pointer;pointer-events:auto;`;
 
     const outer=document.createElement('div');
     outer.className='pin-outer';
