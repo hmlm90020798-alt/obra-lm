@@ -68,14 +68,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 /* ── STAGE ── */
 .stage{position:fixed;top:96px;left:0;right:0;bottom:calc(50px + env(safe-area-inset-bottom));background:#080a0e;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-.slides{position:relative;width:100%;height:100%;}
-.slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .38s ease,transform .38s cubic-bezier(.4,0,.2,1);transform:scale(.97);}
-.slide.active{opacity:1;pointer-events:auto;transform:scale(1);}
-.slide.enter-l{transform:translateX(5%) scale(.97);}
-.slide.enter-r{transform:translateX(-5%) scale(.97);}
-.img-wrap{position:relative;display:inline-block;line-height:0;max-width:100%;max-height:100%;}
-.img-wrap img{display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;}
-.img-wrap.planta img{filter:invert(1) brightness(.88) contrast(1.05);}
+#img-layer{display:flex;align-items:center;justify-content:center;}
+#img-wrap-main{position:relative;display:inline-block;line-height:0;}
+#main-img{display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;transition:opacity .3s ease;}
+#pins-layer{pointer-events:none;}
 .anot-svg{position:absolute;top:0;left:0;pointer-events:all;overflow:visible;}
 .anot-text{font-family:'DM Mono',monospace;}
 .anot-pulse{animation:anotPulse 3s ease-out infinite;}
@@ -234,10 +230,22 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 <div class="stage" id="stage">
   <div class="loading" id="stage-loading"><div class="spinner"></div>A carregar…</div>
-  <div class="slides" id="slides" style="display:none"></div>
-  <div id="swap-overlay" class="swap-overlay"><img id="swap-img" src="" alt=""></div>
-  <svg id="destaque-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;overflow:visible"></svg>
-  <button id="swap-back" class="swap-back" onclick="closeSwap()">← Voltar</button>
+
+  <!-- CAMADA 1: Imagens (troca entre alçados) -->
+  <div id="img-layer" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+    <div id="img-wrap-main" style="position:relative;display:inline-block;line-height:0;">
+      <img id="main-img" src="" alt="" style="display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;transition:opacity .3s ease;">
+    </div>
+  </div>
+
+  <!-- CAMADA 2: Pins fixos (sempre visíveis) -->
+  <div id="pins-layer" style="position:absolute;inset:0;pointer-events:none;z-index:20;">
+    <svg id="destaque-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;overflow:visible"></svg>
+  </div>
+
+  <!-- Botão voltar -->
+  <button id="swap-back" class="swap-back" onclick="closeSwap()" style="display:none">← Voltar</button>
+
   <div class="zoom-btns">
     <button class="zoom-btn" onclick="zoom(1.35)">＋</button>
     <button class="zoom-btn" onclick="zoom(0)">⊙</button>
@@ -292,7 +300,7 @@ const S = {
   hotspots:{}, tiposCustom:[], anotacoes:{},
   materiais:[], matCheck:{}, ocorrencias:[], conclusao:null,
   activePopup:null,
-  swapActivo: false,
+  swapActivo: false, _swapOrigSrc:null, _swapOrigFilter:null, _swapOrigIdx:null,
   Z:{scale:1,x:0,y:0}, swipeStart:null, pinchDist:0, isPinch:false, panStart:null,
 };
 
@@ -342,46 +350,52 @@ async function loadImagens() {
 /* ── SLIDES ── */
 function buildSlides() {
   document.getElementById('stage-loading').style.display='none';
-  const wrap=document.getElementById('slides');
-  wrap.style.display='block'; wrap.innerHTML='';
-  if (!S.alcados.length) {wrap.innerHTML='<div class="empty" style="height:100%"><div class="empty-ico">📐</div>Sem alçados</div>';return;}
-  // Filtrar alçados visíveis para navegação (ocultos só via hotspot)
-  const alcadosVisiveis = S.alcados.filter(a=>!a.oculto);
-  // Construir todos os slides (incluindo ocultos) mas nav só mostra visíveis
-  S.alcados.forEach((a,i)=>{
-    const slide=document.createElement('div');
-    slide.className='slide'+(i===0?' active':''); slide.id='slide-'+i;
-    const iw=document.createElement('div');
-    iw.className='img-wrap '+(a.tipo==='planta'?'planta':'foto'); iw.id='iw-'+i;
-    if (a.img) {
-      const img=document.createElement('img');
-      img.src=a.img;
-      img.onload=()=>{renderPins(i);renderAnotViewer(i);};
-      iw.appendChild(img);
-      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-      svg.setAttribute('class','anot-svg'); svg.id='asvg-'+i;
-      svg.style.cssText='position:absolute;top:0;left:0;pointer-events:none;overflow:visible';
-      svg.innerHTML=`<defs><marker id="ah-${i}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="currentColor"/></marker></defs>`;
-      iw.appendChild(svg);
-    } else {
-      iw.innerHTML='<div class="empty" style="padding:3rem"><div class="empty-ico">🖼</div>Sem imagem</div>';
-    }
-    slide.appendChild(iw); wrap.appendChild(slide);
-  });
-  S.idx=0; buildNavDropdown(); updateNav();
+  if (!S.alcados.length) return;
+
+  // Primeiro alçado visível
+  S.idx = S.alcados.findIndex(a=>!a.oculto);
+  if (S.idx < 0) S.idx = 0;
+
+  // Mostrar imagem inicial
+  showMainImg(S.idx);
+  buildNavDropdown();
+  updateNav();
+}
+
+function showMainImg(idx, fade=false) {
+  const a = S.alcados[idx];
+  if (!a) return;
+  const img = document.getElementById('main-img');
+  const wrap = document.getElementById('img-wrap-main');
+  img.style.filter = a.tipo==='planta' ? 'invert(1) brightness(.88) contrast(1.05)' : '';
+  if (a.img) {
+    if (fade) img.style.opacity='0';
+    const onLoad = () => {
+      if (fade) requestAnimationFrame(()=>{ img.style.opacity='1'; });
+      renderPinsFixed();
+      renderAnotFixed();
+      renderLegenda(idx);
+      syncDestaquePositions();
+    };
+    if (img.src === a.img) { onLoad(); return; }
+    img.onload = onLoad;
+    img.src = a.img;
+  } else {
+    img.src='';
+    renderPinsFixed();
+  }
 }
 
 function updateNav() {
-  const n=S.alcados.length;
-  const a=S.alcados[S.idx];
+  const visiveis = S.alcados.filter(a=>!a.oculto);
+  const a = S.alcados[S.idx];
+  const viIdx = visiveis.findIndex(x=>x.key===a?.key);
   document.getElementById('nav-current-name').textContent=a?.nome||'—';
-  document.getElementById('nav-idx').textContent=n?`${S.idx+1}/${n}`:'—';
-  document.getElementById('nav-prev').disabled=S.idx===0;
-  document.getElementById('nav-next').disabled=S.idx>=n-1;
-  // Actualizar estado active no dropdown
-  document.querySelectorAll('.nav-dd-item').forEach((el,i)=>{
-    el.classList.toggle('active',i===S.idx);
-  });
+  document.getElementById('nav-idx').textContent=visiveis.length?`${viIdx+1}/${visiveis.length}`:'—';
+  const prevIdx = S.alcados.slice(0,S.idx).findLastIndex(a=>!a.oculto);
+  const nextIdx = S.alcados.findIndex((a,i)=>i>S.idx&&!a.oculto);
+  document.getElementById('nav-prev').disabled=prevIdx<0;
+  document.getElementById('nav-next').disabled=nextIdx<0;
 }
 
 function buildNavDropdown() {
@@ -416,35 +430,37 @@ document.addEventListener('click',ev=>{
   if (!ev.target.closest('#nav-wrap')) closeNavDropdown();
 });
 
-window.navSlide=dir=>goTo(S.idx+dir);
+window.navSlide=dir=>{
+  const visiveis=S.alcados.map((a,i)=>({a,i})).filter(({a})=>!a.oculto);
+  const cur=visiveis.findIndex(({i})=>i===S.idx);
+  const next=visiveis[cur+dir];
+  if(next) goTo(next.i);
+};
 window.goTo=function(idx){
   idx=Number(idx);
-  if (idx<0||idx>=S.alcados.length||idx===S.idx) return;
-  const slides=document.querySelectorAll('.slide');
-  const dir=idx>S.idx?'l':'r'; const prev=S.idx; S.idx=idx;
-  slides[idx].classList.add('enter-'+dir);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-    slides[prev].classList.remove('active');
-    slides[idx].classList.remove('enter-l','enter-r');
-    slides[idx].classList.add('active');
-    zoomReset(); closePopup(); closeSwap(); hideDestaque(); updateNav();
-    renderLegenda(idx);
-    setTimeout(()=>slides[prev].classList.remove('active'),400);
-  }));
+  if(idx<0||idx>=S.alcados.length||idx===S.idx) return;
+  S.idx=idx;
+  zoomReset(); closePopup(); closeSwap(); hideDestaque();
+  closeNavDropdown(); updateNav();
+  showMainImg(idx, true);
 };
 
 /* ── ZOOM ── */
 function applyZoom(){
-  const iw=document.getElementById('iw-'+S.idx);
+  const iw=document.getElementById('img-wrap-main');
   if (!iw) return;
   iw.style.transform=S.Z.scale>1?`scale(${S.Z.scale}) translate(${S.Z.x/S.Z.scale}px,${S.Z.y/S.Z.scale}px)`:'';
   iw.style.cursor=S.Z.scale>1?'grab':'';
+  // Re-posicionar pins após zoom (debounce leve)
+  clearTimeout(S._zoomPinTimer);
+  S._zoomPinTimer=setTimeout(renderPinsFixed, 50);
 }
 function zoomReset(){S.Z={scale:1,x:0,y:0};applyZoom();}
 window.zoom=f=>{if(f===0){zoomReset();return;}S.Z.scale=Math.min(5,Math.max(1,+(S.Z.scale*f).toFixed(2)));if(S.Z.scale<=1){S.Z.x=0;S.Z.y=0;}applyZoom();};
 document.getElementById('stage').addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.15:0.87);},{passive:false});
 
 const stage=document.getElementById('stage');
+const imgLayer=document.getElementById('img-layer');
 stage.addEventListener('touchstart',e=>{
   if (e.touches.length===2){S.isPinch=true;S.pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);e.preventDefault();}
   else if (e.touches.length===1){
@@ -461,45 +477,11 @@ stage.addEventListener('touchend',e=>{
   if (S.isPinch){S.isPinch=false;return;}
   if (S.Z.scale>1||!S.swipeStart) return;
   const dx=e.changedTouches[0].clientX-S.swipeStart.x,dy=e.changedTouches[0].clientY-S.swipeStart.y;
-  if (Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45) goTo(S.idx+(dx<0?1:-1));
+  if (Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45) navSlide(dx<0?1:-1);
   S.swipeStart=null;
 },{passive:true});
 
-/* ── PINS COM PULSAÇÃO ── */
-function renderPins(idx) {
-  const iw=document.getElementById('iw-'+idx);
-  if (!iw) return;
-  iw.querySelectorAll('.pin-wrap').forEach(el=>el.remove());
-  const img=iw.querySelector('img');
-  const key=S.alcados[idx]?.key;
-  const hss=key?(S.hotspots[key]||[]):[];
-  let eq=0;
-  hss.forEach((h,i)=>{
-    const isEq=h.tipo==='equipamento'; if(isEq) eq++;
-    const lbl=isEq?String(eq):String(i+1);
-    const w=img?.getBoundingClientRect().width||400;
-    const sz=pinSz(h.pinSize||'m',w);
-    const t=getTipo(h.tipo,S.tiposCustom);
-    const pw=document.createElement('div');
-    pw.className='pin-wrap'; pw.style.left=h.x+'%'; pw.style.top=h.y+'%';
-    // Anel pulsante
-    const outer=document.createElement('div');
-    outer.className='pin-outer';
-    outer.style.cssText=`width:${sz+12}px;height:${sz+12}px;background:${t.cor};`;
-    // Pin interno
-    const inner=document.createElement('div');
-    inner.className='pin-inner';
-    inner.style.cssText=`width:${sz}px;height:${sz}px;border-color:${t.cor};font-size:${Math.round(sz*.38)}px;`;
-    inner.innerHTML=pinSVG(h.tipo,lbl,sz,S.tiposCustom).replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'');
-    // Usar só o SVG directamente
-    const svgEl=document.createElement('div');
-    svgEl.innerHTML=pinSVG(h.tipo,lbl,sz,S.tiposCustom);
-    pw.appendChild(outer);
-    pw.appendChild(svgEl.firstChild);
-    pw.addEventListener('click',ev=>{ev.stopPropagation();openPopup(h,pw,idx);});
-    iw.appendChild(pw);
-  });
-}
+/* ── PINS — ver renderPinsFixed abaixo ── */
 
 /* ── POPUP ESTRUTURADO ── */
 function openPopup(h,pw,slideIdx) {
@@ -535,7 +517,7 @@ function openPopup(h,pw,slideIdx) {
     </div>`;
 
   // Posicionar popup
-  const img=document.querySelector(`#iw-${slideIdx} img`);
+  const img=document.getElementById('main-img');
   const stRect=stage.getBoundingClientRect();
   const iRect=img?img.getBoundingClientRect():stRect;
   const px=iRect.left-stRect.left+(h.x/100)*iRect.width;
@@ -602,35 +584,42 @@ function hideDestaque() {
 }
 
 async function openSwap(alcadoKey, slideIdx) {
-  // Buscar imagem do alçado oculto
   const a = S.alcados.find(x=>x.key===alcadoKey);
   if (!a) return;
-  let img = a.img;
-  if (!img && a.temImg) {
-    try {
-      const snap = await getDoc(doc(db,'obras',S.obraId+'_SKIP'));
-      // imagem já carregada no loadImagens
-    } catch(_){}
-    img = a.img;
-  }
-  if (!img) { toast('Alçado sem imagem','err'); return; }
-  const overlay = document.getElementById('swap-overlay');
-  const swapImg = document.getElementById('swap-img');
+  if (!a.img && !a.temImg) { toast('Alçado sem imagem','err'); return; }
+  const mainImg = document.getElementById('main-img');
   const backBtn = document.getElementById('swap-back');
-  swapImg.src = img;
-  overlay.className = 'swap-overlay' + (a.tipo==='planta' ? ' planta' : '') + ' visible';
-  backBtn.style.display = 'block';
-  S.swapActivo = true;
+
+  // Guardar imagem original
+  if (!S._swapOrigSrc) {
+    S._swapOrigSrc  = mainImg.src;
+    S._swapOrigFilter = mainImg.style.filter;
+    S._swapOrigIdx  = S.idx;
+  }
+
+  // Trocar apenas a imagem — os pins ficam na camada fixa
+  mainImg.style.opacity='0';
+  mainImg.style.filter = a.tipo==='planta' ? 'invert(1) brightness(.88) contrast(1.05)' : '';
+  mainImg.onload = ()=>{ mainImg.style.opacity='1'; };
+  mainImg.src = a.img || '';
+
+  backBtn.style.display='block';
+  S.swapActivo=true;
   hideDestaque();
-  toast('← Clica em Voltar para ver o alçado principal','ok');
 }
 
 window.closeSwap = () => {
-  const overlay = document.getElementById('swap-overlay');
+  if (!S._swapOrigSrc) return;
+  const mainImg = document.getElementById('main-img');
   const backBtn = document.getElementById('swap-back');
-  overlay.classList.remove('visible');
-  backBtn.style.display = 'none';
-  S.swapActivo = false;
+  mainImg.style.opacity='0';
+  mainImg.style.filter = S._swapOrigFilter || '';
+  mainImg.onload = ()=>{ mainImg.style.opacity='1'; };
+  mainImg.src = S._swapOrigSrc;
+  S._swapOrigSrc = null; S._swapOrigFilter = null;
+  backBtn.style.display='none';
+  S.swapActivo=false;
+  closePopup();
 };
 
 function closePopup(){
@@ -648,6 +637,87 @@ window.goToAlcado=key=>{
   if (idx>=0) goTo(idx);
 };
 stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
+
+/* ── PINS NA CAMADA FIXA ── */
+function renderPinsFixed() {
+  const pinsLayer = document.getElementById('pins-layer');
+  // Remover pins anteriores
+  pinsLayer.querySelectorAll('.pin-wrap').forEach(el=>el.remove());
+
+  const idx = S.idx;
+  const a   = S.alcados[idx];
+  const key = a?.key;
+  const hss = key?(S.hotspots[key]||[]):[];
+  if (!hss.length) return;
+
+  const img  = document.getElementById('main-img');
+  if (!img || !img.naturalWidth) return;
+
+  let eq=0;
+  hss.forEach((h,i)=>{
+    const isEq=h.tipo==='equipamento'; if(isEq)eq++;
+    const lbl=isEq?String(eq):String(i+1);
+    const w=img.getBoundingClientRect().width||400;
+    const sz=pinSz(h.pinSize||'m',w);
+    const t=getTipo(h.tipo,S.tiposCustom);
+
+    const pw=document.createElement('div');
+    pw.className='pin-wrap'; pw.style.cssText=`position:absolute;left:${h.x}%;top:${h.y}%;transform:translate(-50%,-50%);z-index:30;-webkit-tap-highlight-color:transparent;cursor:pointer;pointer-events:auto;`;
+
+    // Posicionar relativo à imagem dentro do pins-layer
+    const stRect=document.getElementById('stage').getBoundingClientRect();
+    const iRect=img.getBoundingClientRect();
+    const px=(h.x/100)*iRect.width + (iRect.left-stRect.left);
+    const py=(h.y/100)*iRect.height + (iRect.top-stRect.top);
+    pw.style.left=px+'px'; pw.style.top=py+'px'; pw.style.transform='translate(-50%,-50%)';
+
+    const outer=document.createElement('div');
+    outer.className='pin-outer';
+    outer.style.cssText=`width:${sz+12}px;height:${sz+12}px;background:${t.cor};border-radius:50%;position:absolute;top:50%;left:50%;`;
+
+    const svgWrap=document.createElement('div');
+    svgWrap.innerHTML=pinSVG(h.tipo,lbl,sz,S.tiposCustom);
+    pw.appendChild(outer);
+    pw.appendChild(svgWrap.firstChild);
+    pw.addEventListener('click',ev=>{ev.stopPropagation();openPopup(h,pw,idx);});
+    pinsLayer.appendChild(pw);
+  });
+}
+
+function renderAnotFixed() {
+  // SVG de anotações associado ao alçado actual
+  const idx = S.idx;
+  const key = S.alcados[idx]?.key;
+  const pinsLayer = document.getElementById('pins-layer');
+  pinsLayer.querySelectorAll('.anot-svg').forEach(s=>{ s.style.display='none'; });
+  const svgId='asvg-'+idx;
+  let svg=document.getElementById(svgId);
+  if (!svg) {
+    svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','anot-svg'); svg.id=svgId;
+    svg.style.cssText='position:absolute;top:0;left:0;pointer-events:all;overflow:visible';
+    svg.innerHTML='<defs></defs>';
+    pinsLayer.appendChild(svg);
+  }
+  svg.style.display='block';
+  renderAnotViewer(idx);
+}
+
+function syncDestaquePositions() {
+  if (S._destaqueH) renderDestaque();
+}
+
+// Re-posicionar pins ao resize
+function rerenderPins() {
+  renderPinsFixed();
+  renderAnotFixed();
+  syncDestaquePositions();
+}
+
+function renderPins(idx) {
+  // compatibilidade — redirecionar para nova função
+  if (idx === S.idx) rerenderPins();
+}
 
 /* ── ANOTAÇÕES ── */
 function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
@@ -671,10 +741,10 @@ function svgLabelV(g,tx,ty,texto,cor,oY=0,dynFs=12,rot=0){
 
 function syncAnotSVG(idx){
   const svg=document.getElementById('asvg-'+idx);
-  const img=document.querySelector(`#iw-${idx} img`);
+  const img=document.getElementById('main-img');
   if (!svg||!img) return;
-  const iw=document.getElementById('iw-'+idx);
-  const wR=iw.getBoundingClientRect(),iR=img.getBoundingClientRect();
+  const pL=document.getElementById('pins-layer');
+  const wR=pL.getBoundingClientRect(),iR=img.getBoundingClientRect();
   svg.style.left=(iR.left-wR.left)+'px'; svg.style.top=(iR.top-wR.top)+'px';
   svg.style.width=iR.width+'px'; svg.style.height=iR.height+'px';
   svg.setAttribute('viewBox',`0 0 ${iR.width} ${iR.height}`);
@@ -685,7 +755,7 @@ function renderAnotViewer(idx){
   if (!svg) return;
   syncAnotSVG(idx);
   while (svg.children.length>1) svg.removeChild(svg.lastChild);
-  const img=document.querySelector(`#iw-${idx} img`);
+  const img=document.getElementById('main-img');
   if (!img) return;
   const iRv=img.getBoundingClientRect();
   const W=iRv.width||800,H=iRv.height||600;
@@ -706,6 +776,7 @@ function renderAnotViewer(idx){
 
 function renderLegenda(idx){
   const el=document.getElementById('legenda');
+  if(!el)return;
   const key=S.alcados[idx]?.key;
   const hss=key?(S.hotspots[key]||[]):[];
   const ids=[...new Set(hss.map(h=>h.tipo))];
@@ -716,7 +787,7 @@ function renderLegenda(idx){
 }
 
 let _rt;
-window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{S.alcados.forEach((_,i)=>{const img=document.querySelector(`#iw-${i} img`);if(img?.complete){renderPins(i);renderAnotViewer(i);}});applyZoom();renderDestaque();},150);});
+window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{rerenderPins();applyZoom();renderDestaque();},150);});
 
 /* ── TABS ── */
 window.switchTab=tab=>{
