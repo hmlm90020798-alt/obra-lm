@@ -727,12 +727,13 @@ function renderAlcados() {
     row.innerHTML   = `
       <div class="alcado-handle" title="Arrastar">⠿</div>
       <div class="alcado-dot"></div>
-      <span class="alcado-name">${a.nome}</span>
+      <span class="alcado-name" id="aname-${a.key}">${a.nome}</span>
       ${a.oculto?'<span style="font-family:var(--mono);font-size:.55rem;padding:.1rem .3rem;background:rgba(232,162,52,.15);color:#e8a234;border:1px solid rgba(232,162,52,.3);border-radius:3px;flex-shrink:0">oculto</span>':''}
       <span class="alcado-count">${n}</span>
+      <button onclick="renameAlcado('${a.key}',event)" title="Renomear" style="background:none;border:none;cursor:pointer;font-size:.78rem;color:var(--text3);padding:.1rem .2rem;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'">✎</button>
       <button onclick="toggleOculto('${a.key}',event)" title="${a.oculto?'Tornar visível':'Ocultar'}" style="background:none;border:none;cursor:pointer;font-size:.8rem;color:${a.oculto?'#e8a234':'var(--text3)'}">👁</button>
       <button class="alcado-del" onclick="delAlcado('${a.key}',event)" title="Eliminar">✕</button>`;
-    row.onclick = e => { if(e.target.closest('.alcado-del,.alcado-handle')) return; activateAlcado(a.key); };
+    row.onclick = e => { if(e.target.closest('.alcado-del,.alcado-handle,button')) return; activateAlcado(a.key); };
     row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain',a.key); setTimeout(()=>row.classList.add('dragging'),0); });
     row.addEventListener('dragend',   ()=>row.classList.remove('dragging'));
     row.addEventListener('dragover',  e=>{ e.preventDefault(); row.classList.add('drag-over'); });
@@ -765,6 +766,17 @@ window.addAlcado = () => {
   renderAlcados();
   activateAlcado(key);
   toast('Alçado adicionado','ok');
+};
+
+window.renameAlcado = (key, e) => {
+  if (e) e.stopPropagation();
+  const a = S.alcados.find(x=>x.key===key);
+  if (!a) return;
+  const novoNome = prompt('Novo nome:', a.nome);
+  if (!novoNome || !novoNome.trim()) return;
+  a.nome = novoNome.trim();
+  renderAlcados();
+  toast('Alçado renomeado','ok');
 };
 
 window.toggleOculto = (key, e) => {
