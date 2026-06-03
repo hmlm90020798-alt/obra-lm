@@ -108,7 +108,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 
 /* Zoom */
 .zoom-btns { position: absolute; top: .5rem; right: .65rem; z-index: 40; display: flex; gap: .25rem; }
-.zoom-btn { width: 38px; height: 38px; border-radius: 8px; background: rgba(17,19,24,.9); border: 1px solid var(--border); color: var(--text2); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; backdrop-filter: blur(4px); }
+.zoom-btn { width: 30px; height: 30px; border-radius: 5px; background: rgba(17,19,24,.85); border: 1px solid var(--border); color: var(--text2); font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; backdrop-filter: blur(4px); }
 .zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Pins */
@@ -125,61 +125,19 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .popup {
   position: absolute; z-index: 50;
   background: var(--surface); border: 1px solid var(--border2);
-  border-radius: 12px; padding: .9rem 1rem; width: min(260px,85vw);
+  border-radius: 12px; padding: .9rem 1rem; width: 220px;
   box-shadow: 0 8px 28px rgba(0,0,0,.6);
   animation: popIn .16s cubic-bezier(.16,1,.3,1);
-  cursor: grab; user-select: none;
 }
 @keyframes popIn { from { opacity:0; transform:scale(.9) translateY(4px); } to { opacity:1; transform:scale(1) translateY(0); } }
-.pop-head { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .5rem; }
-.pop-label { font-size: .95rem; font-weight: 700; line-height: 1.3; flex: 1; font-family: var(--serif); cursor: grab; }
-.pop-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: .9rem; padding: .1rem; flex-shrink: 0; user-select: none; }
+.pop-head { display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .5rem; cursor:grab; }
+.pop-head:active { cursor:grabbing; }
+.popup.dragging { transition:none; animation:none; }
+.pop-label { font-size: .88rem; font-weight: 600; line-height: 1.3; flex: 1; font-family: var(--serif); }
+.pop-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: .9rem; padding: .1rem; flex-shrink: 0; }
 .pop-tipo { font-size: .6rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: .45rem; }
 .pop-cli { font-size: .8rem; color: var(--text2); line-height: 1.6; }
 .pop-empty { font-size: .72rem; color: var(--text3); }
-
-/* ── FULLSCREEN OVERLAY ── */
-#fs-overlay {
-  display: none;
-  position: fixed; inset: 0; z-index: 999;
-  background: #080a0e;
-  align-items: center; justify-content: center;
-  overflow: hidden;
-}
-#fs-overlay.open { display: flex; }
-#fs-wrap {
-  position: relative;
-  width: 100vw; height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
-#fs-wrap .img-wrap {
-  position: relative;
-  transform-origin: center center;
-  max-width: 100vw; max-height: 100vh;
-}
-#fs-wrap .img-wrap img {
-  max-width: 100vw; max-height: 100vh;
-  width: auto; height: auto;
-  object-fit: contain; touch-action: none; display: block;
-}
-#fs-close {
-  position: fixed; top: .75rem; right: .75rem; z-index: 1000;
-  width: 44px; height: 44px; border-radius: 50%;
-  background: rgba(17,19,24,.95); border: 1px solid var(--border2);
-  color: var(--text); font-size: 1.1rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(6px);
-}
-#btn-expand {
-  position: absolute; bottom: .5rem; left: .65rem; z-index: 40;
-  width: 38px; height: 38px; border-radius: 8px;
-  background: rgba(17,19,24,.9); border: 1px solid var(--border);
-  color: var(--text2); font-size: 1rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(4px); transition: all .15s;
-}
-#btn-expand:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ── TABS ── */
 .btabs {
@@ -226,55 +184,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast.ok  { border-color: var(--green); color: var(--green); }
 #toast.err { border-color: var(--red);   color: var(--red); }
-
-@media (max-width: 600px) {
-  /* ── Header mais compacto ── */
-  .header       { padding: .5rem .75rem 0; }
-  .header-nome  { font-size: 1rem; }
-  .header-local { font-size: .7rem; }
-  .header-fase  { font-size: .65rem; padding: 3px 10px; }
-
-  /* ── Nav bar mais fina ── */
-  .nav-bar { height: 38px; top: 72px; }
-
-  /* ── Stage ocupa o máximo ── */
-  .stage { top: 110px; bottom: calc(52px + env(safe-area-inset-bottom)); }
-
-  /* ── Imagem ocupa o stage todo ── */
-  .img-wrap { max-width: 100%; max-height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
-  .img-wrap img { max-height: calc(100svh - 110px - 52px - env(safe-area-inset-bottom)); max-width: 100%; }
-
-  /* ── Tab bar ── */
-  .btabs { height: calc(52px + env(safe-area-inset-bottom)); }
-  .btab  { font-size: .62rem; gap: 3px; }
-  .btab svg { width: 19px; height: 19px; }
-
-  /* ── Popup flutuante e arrastável no mobile ── */
-  .popup {
-    position: fixed !important;
-    width: min(280px, calc(100vw - 32px)) !important;
-    max-height: 45vh;
-    overflow-y: auto;
-    border-radius: 14px;
-    z-index: 200 !important;
-    touch-action: none;
-  }
-  /* Indicador de drag */
-  .popup::before {
-    content: '';
-    display: block;
-    width: 36px; height: 4px;
-    background: var(--border2);
-    border-radius: 2px;
-    margin: 0 auto .55rem;
-  }
-
-  /* ── Botões zoom maiores ── */
-  .zoom-btn { width: 40px; height: 40px; border-radius: 10px; font-size: 1.1rem; }
-
-  /* ── Pins menores no mobile ── */
-  .pin-wrap svg { max-width: 28px !important; max-height: 28px !important; }
-}
 </style>
 </head>
 <body>
@@ -315,13 +224,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     <button class="zoom-btn" onclick="zoom(0)">⊙</button>
     <button class="zoom-btn" onclick="zoom(0.74)">－</button>
   </div>
-  <button id="btn-expand" onclick="openFullscreen()" title="Ver em ecrã inteiro">⛶</button>
-</div>
-
-<!-- FULLSCREEN OVERLAY -->
-<div id="fs-overlay">
-  <button id="fs-close" onclick="closeFullscreen()">✕</button>
-  <div id="fs-wrap"></div>
 </div>
 
 <!-- PANELS -->
@@ -443,17 +345,7 @@ function updateNav() {
   document.querySelectorAll('.nav-dd-item').forEach((el,i)=>el.classList.toggle('active',i===S.idx));
 }
 function buildNavDropdown(){
-  const dd=document.getElementById('nav-dropdown');
-  dd.innerHTML='';
-  S.alcados.forEach((a,i)=>{
-    const item=document.createElement('div');
-    item.className='nav-dd-item'+(i===S.idx?' active':'');
-    item.innerHTML=`<span class="nav-dd-num">${i+1}</span><span class="nav-dd-name">${a.nome}</span>${i===S.idx?'<span class="nav-dd-check">✓</span>':''}`;
-    const select=()=>{ goTo(i); closeNavDropdown(); };
-    item.addEventListener('touchend', ev=>{ ev.preventDefault(); select(); }, {passive:false});
-    item.addEventListener('click', select);
-    dd.appendChild(item);
-  });
+  document.getElementById('nav-dropdown').innerHTML=S.alcados.map((a,i)=>`<div class="nav-dd-item${i===S.idx?' active':''}" onclick="goTo(${i});closeNavDropdown()"><span class="nav-dd-num">${i+1}</span><span class="nav-dd-name">${a.nome}</span>${i===S.idx?'<span class="nav-dd-check">✓</span>':''}</div>`).join('');
 }
 function toggleNavDropdown(){const dd=document.getElementById('nav-dropdown'),curr=document.getElementById('nav-current');if(dd.classList.contains('open')){closeNavDropdown();}else{buildNavDropdown();dd.classList.add('open');curr.classList.add('open');}}
 function closeNavDropdown(){document.getElementById('nav-dropdown').classList.remove('open');document.getElementById('nav-current').classList.remove('open');}
@@ -493,8 +385,6 @@ document.getElementById('stage').addEventListener('wheel',e=>{e.preventDefault()
 
 const stage=document.getElementById('stage');
 stage.addEventListener('touchstart',e=>{
-  // Fechar popup ao tocar na imagem (pan, pinch, swipe)
-  if(document.getElementById('popup')&&!e.target.closest('.pin-wrap')&&!e.target.closest('.popup')) closePopup();
   if(e.touches.length===2){S.isPinch=true;S.pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);e.preventDefault();}
   else if(e.touches.length===1){
     if(S.Z.scale>1) S.panStart={x:e.touches[0].clientX-S.Z.x,y:e.touches[0].clientY-S.Z.y};
@@ -532,7 +422,6 @@ function renderPins(idx){
     if (!h.cli && !h.label) return;
     const pw=document.createElement('div');
     pw.className='pin-wrap'; pw.style.left=h.x+'%'; pw.style.top=h.y+'%';
-    pw.dataset.hsId = h.id || String(i);
     pw.innerHTML=pinSVG(h.tipo,lbl,sz,S.tiposCustom);
     pw.addEventListener('click',ev=>{ev.stopPropagation();openPopup(h,pw,idx);});
     iw.appendChild(pw);
@@ -561,119 +450,16 @@ function openPopup(h,pw,slideIdx){
     <div class="pop-tipo" style="color:${t.cor}">${t.label}</div>
     ${h.cli?`<div class="pop-cli">${h.cli}</div>`:`<div class="pop-empty">—</div>`}
     ${linkBtns.join('')}`;
-
-  const inFS = S.fsMode;
-  const isMobile = window.innerWidth <= 600;
-  const margin = 12;
-  const popW = Math.min(280, window.innerWidth - 32);
-  const popH = 160;
-  const tabH = inFS ? 0 : (isMobile ? 72 : 0);
-
-  // Referência de imagem correcta
-  const img = inFS
-    ? document.querySelector('#fs-wrap .img-wrap img')
-    : document.querySelector(`#iw-${slideIdx} img`);
-  const ctRect = inFS
-    ? document.getElementById('fs-overlay').getBoundingClientRect()
-    : stage.getBoundingClientRect();
-  const iRect = img ? img.getBoundingClientRect() : ctRect;
-
-  const pinX = iRect.left + (h.x / 100) * iRect.width;
-  const pinY = iRect.top  + (h.y / 100) * iRect.height;
-
-  if (isMobile || inFS) {
-    let left = pinX - popW / 2;
-    let top  = pinY + 24;
-    left = Math.max(margin, Math.min(left, window.innerWidth - popW - margin));
-    if (top + popH + tabH > window.innerHeight) top = Math.max(margin, pinY - popH - 24);
-    top = Math.min(top, window.innerHeight - tabH - popH - margin);
-
-    popup.style.position = 'fixed';
-    popup.style.left = left + 'px';
-    popup.style.top  = top  + 'px';
-    popup.style.right = 'auto';
-    popup.style.bottom = 'auto';
-    (inFS ? document.getElementById('fs-overlay') : document.body).appendChild(popup);
-
-    let dragStartX, dragStartY, popStartLeft, popStartTop, isDragging = false, hasDragged = false;
-    popup.addEventListener('touchstart', ev => {
-      if (ev.target.closest('button')) return;
-      const t0 = ev.touches[0];
-      dragStartX = t0.clientX; dragStartY = t0.clientY;
-      const r = popup.getBoundingClientRect();
-      popStartLeft = r.left; popStartTop = r.top;
-      isDragging = true; hasDragged = false;
-      ev.stopPropagation();
-    }, {passive:true});
-    popup.addEventListener('touchmove', ev => {
-      if (!isDragging) return;
-      const t0 = ev.touches[0];
-      const dx = t0.clientX - dragStartX, dy = t0.clientY - dragStartY;
-      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasDragged = true;
-      let newLeft = popStartLeft + dx;
-      let newTop  = popStartTop  + dy;
-      newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth - popW - margin));
-      newTop  = Math.max(margin, Math.min(newTop,  window.innerHeight - tabH - 60));
-      popup.style.left = newLeft + 'px';
-      popup.style.top  = newTop  + 'px';
-      ev.preventDefault();
-    }, {passive:false});
-    popup.addEventListener('touchend', ev => {
-      isDragging = false;
-      if (hasDragged) { ev.stopPropagation(); hasDragged = false; }
-    }, {passive:true});
-    addMouseDrag(popup, margin, window.innerWidth - popW - margin, margin, window.innerHeight - tabH - 60, false);
-
-  } else {
-    const px = iRect.left - ctRect.left + (h.x / 100) * iRect.width;
-    const py = iRect.top  - ctRect.top  + (h.y / 100) * iRect.height;
-    popup.style.cssText = `position:absolute;left:${Math.min(px+14,ctRect.width-232)}px;top:${py+160+20>ctRect.height?Math.max(4,py-160-10):py+14}px`;
-    stage.appendChild(popup);
-    addMouseDrag(popup, 4, ctRect.width - 264, 4, ctRect.height - 60, true);
-  }
-
-  S.popup = {id: h.id};
-  if (h.linhas?.length || h.linha) showDestaque(h, slideIdx);
-}
-
-/* ── Drag com mouse (desktop) ── */
-function addMouseDrag(el, minL, maxL, minT, maxT, relativeToStage) {
-  let startX, startY, startLeft, startTop, dragging = false;
-  el.addEventListener('mousedown', ev => {
-    if (ev.target.closest('button')) return;
-    ev.preventDefault();
-    dragging = true;
-    startX = ev.clientX; startY = ev.clientY;
-    const r = el.getBoundingClientRect();
-    if (relativeToStage) {
-      const sr = stage.getBoundingClientRect();
-      startLeft = r.left - sr.left;
-      startTop  = r.top  - sr.top;
-    } else {
-      startLeft = r.left;
-      startTop  = r.top;
-    }
-    el.style.cursor = 'grabbing';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
-  });
-  function onMove(ev) {
-    if (!dragging) return;
-    const dx = ev.clientX - startX, dy = ev.clientY - startY;
-    const newLeft = Math.max(minL, Math.min(startLeft + dx, maxL));
-    const newTop  = Math.max(minT, Math.min(startTop  + dy, maxT));
-    el.style.left = newLeft + 'px';
-    el.style.top  = newTop  + 'px';
-  }
-  function onUp(ev) {
-    dragging = false;
-    el.style.cursor = 'default';
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup',   onUp);
-    if (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4) {
-      ev.stopPropagation();
-    }
-  }
+  const img=document.querySelector(`#iw-${slideIdx} img`);
+  const stRect=stage.getBoundingClientRect();
+  const iRect=img?img.getBoundingClientRect():stRect;
+  const px=iRect.left-stRect.left+(h.x/100)*iRect.width;
+  const py=iRect.top-stRect.top+(h.y/100)*iRect.height;
+  popup.style.cssText=`position:absolute;left:${Math.min(px+14,stRect.width-232)}px;top:${py+160+20>stRect.height?Math.max(4,py-160-10):py+14}px`;
+  stage.appendChild(popup); S.popup={id:h.id};
+  if(h.linhas?.length||h.linha) showDestaque(h,slideIdx);
+  const ph=popup.querySelector('.pop-head');
+  if(ph){ph.addEventListener('mousedown',ev=>{if(ev.target.closest('button'))return;ev.preventDefault();popup.classList.add('dragging');const sx=ev.clientX-popup.offsetLeft,sy=ev.clientY-popup.offsetTop,sr=stage.getBoundingClientRect();const onMove=mv=>{popup.style.left=Math.max(0,Math.min(sr.width-popup.offsetWidth,mv.clientX-sx))+'px';popup.style.top=Math.max(0,Math.min(sr.height-popup.offsetHeight,mv.clientY-sy))+'px';};const onUp=()=>{popup.classList.remove('dragging');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);});}
 }
 S._destaqueH=null; S._destaqueIdx=null;
 function renderDestaque(){
@@ -705,6 +491,7 @@ function showDestaque(h,slideIdx){
 function hideDestaque(){S._destaqueH=null;S._destaqueIdx=null;const svg=document.getElementById('destaque-svg');if(!svg)return;svg.querySelectorAll('.destaque-line').forEach(el=>{el.classList.remove('visible');setTimeout(()=>el.remove(),380);});}
 function closePopup(){document.getElementById('popup')?.remove();document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));S.popup=null;hideDestaque();}
 window.closePopup=closePopup;
+stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
 window.openUrlModal=(url,titulo)=>{ window.open(url,'_blank','noopener'); };
 window.closeUrlModal=()=>{};
 window.goToAlcado=key=>{const idx=S.alcados.findIndex(a=>a.key===key);if(idx>=0)goTo(idx);};
@@ -756,109 +543,6 @@ window.confirmarAprovacao=async()=>{
 };
 
 /* ── Toast ── */
-/* ── FULLSCREEN ── */
-const FS = { scale:1, x:0, y:0, isPinch:false, pinchDist:0, panStart:null };
-
-function fsApplyZoom() {
-  const iw = document.querySelector('#fs-wrap .img-wrap');
-  if (!iw) return;
-  iw.style.transform = FS.scale > 1
-    ? `scale(${FS.scale}) translate(${FS.x/FS.scale}px,${FS.y/FS.scale}px)`
-    : '';
-}
-
-window.openFullscreen = function() {
-  const iw = document.getElementById('iw-' + S.idx);
-  if (!iw) return;
-  closePopup();
-  const clone = iw.cloneNode(true);
-  clone.style.transform = '';
-  const key = S.alcados[S.idx]?.key;
-  const hss = key ? (S.hotspots[key] || []) : [];
-  clone.querySelectorAll('.pin-wrap').forEach(pw => {
-    const h = hss.find(hs => (hs.id || String(hss.indexOf(hs))) === pw.dataset.hsId)
-           || hss.find((_, i) => String(i) === pw.dataset.hsId);
-    if (h) pw.addEventListener('click', ev => { ev.stopPropagation(); openPopup(h, pw, S.idx); });
-  });
-  const fsWrap = document.getElementById('fs-wrap');
-  fsWrap.innerHTML = '';
-  fsWrap.appendChild(clone);
-  FS.scale = 1; FS.x = 0; FS.y = 0;
-  S.fsMode = true;
-  document.getElementById('fs-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-};
-
-window.closeFullscreen = function() {
-  closePopup();
-  S.fsMode = false;
-  document.getElementById('fs-overlay').classList.remove('open');
-  document.getElementById('fs-wrap').innerHTML = '';
-  document.body.style.overflow = '';
-  FS.scale = 1; FS.x = 0; FS.y = 0;
-};
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.getElementById('popup')) closePopup(); else closeFullscreen(); } });
-
-const fsOv = document.getElementById('fs-overlay');
-fsOv.addEventListener('touchstart', e => {
-  if (e.target === fsOv || e.target === document.getElementById('fs-wrap')) {
-    if (document.getElementById('popup')) { closePopup(); return; }
-    closeFullscreen(); return;
-  }
-  if (e.touches.length === 2) {
-    FS.isPinch = true;
-    FS.pinchDist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY);
-    e.preventDefault();
-  } else if (e.touches.length === 1 && FS.scale > 1) {
-    FS.panStart = { x: e.touches[0].clientX - FS.x, y: e.touches[0].clientY - FS.y };
-  } else if (e.touches.length === 1) {
-    if (!e.target.closest('.pin-wrap') && !e.target.closest('.popup')) {
-      if (document.getElementById('popup')) { closePopup(); return; }
-    }
-  }
-}, {passive:false});
-
-fsOv.addEventListener('touchmove', e => {
-  if (e.touches.length === 2 && FS.isPinch) {
-    e.preventDefault();
-    const d = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY);
-    FS.scale = Math.min(8, Math.max(1, FS.scale * (d / FS.pinchDist)));
-    FS.pinchDist = d;
-    fsApplyZoom();
-  } else if (e.touches.length === 1 && FS.scale > 1 && FS.panStart) {
-    e.preventDefault();
-    if (document.getElementById('popup')) closePopup();
-    FS.x = e.touches[0].clientX - FS.panStart.x;
-    FS.y = e.touches[0].clientY - FS.panStart.y;
-    fsApplyZoom();
-  }
-}, {passive:false});
-
-fsOv.addEventListener('touchend', () => { FS.isPinch = false; FS.panStart = null; }, {passive:true});
-
-fsOv.addEventListener('wheel', e => {
-  e.preventDefault();
-  FS.scale = Math.min(8, Math.max(1, FS.scale * (e.deltaY < 0 ? 1.15 : 0.87)));
-  if (FS.scale <= 1) { FS.x = 0; FS.y = 0; }
-  fsApplyZoom();
-}, {passive:false});
-
-fsOv.addEventListener('mousedown', e => {
-  if (e.target === fsOv || e.target.closest('#fs-close') || e.target.closest('.popup') || e.target.closest('.pin-wrap')) return;
-  if (FS.scale <= 1) return;
-  if (document.getElementById('popup')) closePopup();
-  const startX = e.clientX - FS.x, startY = e.clientY - FS.y;
-  const onMove = ev => { FS.x = ev.clientX - startX; FS.y = ev.clientY - startY; fsApplyZoom(); };
-  const onUp   = ()  => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-});
-
 function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+(type||'');clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2500);}
 </script>
 </body>
