@@ -674,14 +674,24 @@ window.goToAlcado=key=>{
   const idx=S.alcados.findIndex(a=>a.key===key);
   if (idx>=0) goTo(idx);
 };
-// Fechar popup só se o clique não foi precedido de movimento
+// Fechar popup ao toque limpo fora do popup/pin
 let _stagePointerMoved = false;
-stage.addEventListener('pointerdown', ()=>{ _stagePointerMoved=false; });
-stage.addEventListener('pointermove', ()=>{ _stagePointerMoved=true; });
+let _stagePointerDownTime = 0;
+stage.addEventListener('pointerdown', ev=>{
+  _stagePointerMoved = false;
+  _stagePointerDownTime = Date.now();
+}, {passive:true});
+stage.addEventListener('pointermove', ev=>{
+  if (Math.abs(ev.movementX) > 3 || Math.abs(ev.movementY) > 3)
+    _stagePointerMoved = true;
+}, {passive:true});
 stage.addEventListener('pointerup', ev=>{
-  if (_stagePointerMoved) return; // foi pan/swipe — não fechar
-  if (!ev.target.closest('.pin-wrap') && !ev.target.closest('.popup')) closePopup();
-});
+  const dt = Date.now() - _stagePointerDownTime;
+  if (_stagePointerMoved) return;   // foi movimento
+  if (dt > 400) return;             // foi long press
+  if (ev.target.closest('.pin-wrap,.popup,.swap-back')) return;
+  closePopup();
+}, {passive:true});
 
 /* ── PINS NA CAMADA FIXA ── */
 function _calcPinPos(hx, hy) {
