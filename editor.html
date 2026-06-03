@@ -680,8 +680,8 @@ window.guardar = async () => {
     await Promise.all(imgPromises);
 
     // Documento principal sem imagens
-    const alcadosClean = S.alcados.map(({key,nome,ordem,temImg,rotation,rotacaoConfirmada}) =>
-      ({key, nome, temImg:!!(S.imgCache[key]||temImg), rotation:rotation||0, rotacaoConfirmada:rotacaoConfirmada||false}));
+    const alcadosClean = S.alcados.map(({key,nome,tipo,oculto,ordem,temImg,rotation,rotacaoConfirmada}) =>
+      ({key, nome, tipo:tipo||'foto', oculto:oculto||false, temImg:!!(S.imgCache[key]||temImg), rotation:rotation||0, rotacaoConfirmada:rotacaoConfirmada||false}));
 
     await setDoc(doc(db,'obras',obraId), {
       nome:    document.getElementById('f-nome').value.trim()   || obraId,
