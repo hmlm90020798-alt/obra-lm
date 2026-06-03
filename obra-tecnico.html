@@ -103,15 +103,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   filter: none;
 }
 .swap-overlay.planta img { filter: invert(1) brightness(.88) contrast(1.05); }
-.swap-back {
-  position: absolute; top: .5rem; left: .65rem; z-index: 50;
-  display: none;
-  background: rgba(8,10,14,.88); border: 1px solid var(--border2);
-  color: var(--text); font-family: var(--mono); font-size: .7rem;
-  padding: .35rem .7rem; border-radius: 5px; cursor: pointer;
-  backdrop-filter: blur(4px); transition: all .15s;
-}
-.swap-back:hover { border-color: var(--accent); color: var(--accent); }
+
 
 /* ── HOTSPOT PINS — pulsação ── */
 .pin-wrap{position:absolute;transform:translate(-50%,-50%);z-index:20;-webkit-tap-highlight-color:transparent;cursor:pointer;}
@@ -247,7 +239,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   </div>
 
   <!-- Botão voltar -->
-  <button id="swap-back" class="swap-back" onclick="closeSwap()" style="display:none">← Voltar</button>
+
 
   <div class="zoom-btns">
     <button class="zoom-btn" onclick="zoom(1.35)">＋</button>
@@ -621,7 +613,6 @@ async function openSwap(alcadoKey, slideIdx) {
   if (!a) return;
   if (!a.img && !a.temImg) { toast('Alçado sem imagem','err'); return; }
   const mainImg = document.getElementById('main-img');
-  const backBtn = document.getElementById('swap-back');
 
   // Guardar imagem original
   if (!S._swapOrigSrc) {
@@ -636,7 +627,6 @@ async function openSwap(alcadoKey, slideIdx) {
   mainImg.onload = ()=>{ mainImg.style.opacity='1'; };
   mainImg.src = a.img || '';
 
-  backBtn.style.display='block';
   S.swapActivo=true;
   hideDestaque();
 }
@@ -644,13 +634,11 @@ async function openSwap(alcadoKey, slideIdx) {
 window.closeSwap = () => {
   if (!S._swapOrigSrc) return;
   const mainImg = document.getElementById('main-img');
-  const backBtn = document.getElementById('swap-back');
   mainImg.style.opacity='0';
   mainImg.style.filter = S._swapOrigFilter || '';
   mainImg.onload = ()=>{ mainImg.style.opacity='1'; };
   mainImg.src = S._swapOrigSrc;
   S._swapOrigSrc = null; S._swapOrigFilter = null;
-  backBtn.style.display='none';
   S.swapActivo=false;
   closePopup();
 };
