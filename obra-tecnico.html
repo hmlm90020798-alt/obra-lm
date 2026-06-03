@@ -42,7 +42,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .h-badge.concluido{background:var(--gdim);color:var(--green);border:1px solid rgba(45,216,152,.25);}
 
 /* ── NAV BAR ── */
-.nav-bar{position:fixed;top:52px;left:0;right:0;z-index:90;display:flex;align-items:center;gap:.4rem;padding:.45rem .75rem;height:48px;background:var(--surface);border-bottom:1px solid var(--border);}
+.nav-bar{position:fixed;top:52px;left:0;right:0;z-index:90;display:flex;align-items:center;gap:.4rem;padding:.45rem .75rem;height:44px;background:var(--surface);border-bottom:1px solid var(--border);}
 .nav-btn{width:30px;height:30px;border-radius:5px;background:var(--raised);border:1px solid var(--border);color:var(--text2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
 .nav-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
 .nav-btn:disabled{opacity:.28;cursor:default;}
@@ -74,7 +74,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .slide.enter-l{transform:translateX(5%) scale(.97);}
 .slide.enter-r{transform:translateX(-5%) scale(.97);}
 .img-wrap{position:relative;display:inline-block;line-height:0;max-width:100%;max-height:100%;}
-.img-wrap img{display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;touch-action:none;}
+.img-wrap img{display:block;max-width:100%;max-height:calc(100svh - 96px - 50px);width:auto;height:auto;object-fit:contain;}
 .img-wrap.planta img{filter:invert(1) brightness(.88) contrast(1.05);}
 .anot-svg{position:absolute;top:0;left:0;pointer-events:all;overflow:visible;}
 .anot-text{font-family:'DM Mono',monospace;}
@@ -93,6 +93,30 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 }
 .destaque-line.visible { opacity: .55; }
 
+/* ── SWAP OVERLAY ── */
+.swap-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 15; pointer-events: none;
+  opacity: 0; transition: opacity .3s ease;
+}
+.swap-overlay.visible { opacity: 1; pointer-events: auto; }
+.swap-overlay img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  filter: none;
+}
+.swap-overlay.planta img { filter: invert(1) brightness(.88) contrast(1.05); }
+.swap-back {
+  position: absolute; top: .5rem; left: .65rem; z-index: 50;
+  display: none;
+  background: rgba(8,10,14,.88); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: .7rem;
+  padding: .35rem .7rem; border-radius: 5px; cursor: pointer;
+  backdrop-filter: blur(4px); transition: all .15s;
+}
+.swap-back:hover { border-color: var(--accent); color: var(--accent); }
+
 /* ── HOTSPOT PINS — pulsação ── */
 .pin-wrap{position:absolute;transform:translate(-50%,-50%);z-index:20;-webkit-tap-highlight-color:transparent;cursor:pointer;}
 .pin-outer{border-radius:50%;opacity:.3;animation:pulse-ring 2.5s ease-out infinite;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
@@ -102,12 +126,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 @keyframes pulse-ring{0%{transform:translate(-50%,-50%) scale(.8);opacity:.4;}70%{transform:translate(-50%,-50%) scale(1.8);opacity:0;}100%{transform:translate(-50%,-50%) scale(1.8);opacity:0;}}
 
 /* ── POPUP TÉCNICO ── */
-.popup{position:absolute;z-index:60;width:min(280px,85vw);background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.7);overflow:hidden;animation:popIn .18s cubic-bezier(.16,1,.3,1);}
+.popup{position:absolute;z-index:60;width:240px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.7);overflow:hidden;animation:popIn .18s cubic-bezier(.16,1,.3,1);}
 @keyframes popIn{from{opacity:0;transform:scale(.92) translateY(6px);}to{opacity:1;transform:scale(1) translateY(0);}}
-.popup-header{padding:.75rem 1rem .6rem;display:flex;align-items:flex-start;gap:.6rem;border-bottom:1px solid var(--border);cursor:grab;user-select:none;}
+.popup-header{padding:.75rem 1rem .6rem;display:flex;align-items:flex-start;gap:.6rem;border-bottom:1px solid var(--border);}
 .popup-icon-wrap{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .popup-meta{flex:1;min-width:0;}
-.popup-label{font-size:.95rem;font-weight:700;line-height:1.3;margin-bottom:.2rem;}
+.popup-label{font-size:.85rem;font-weight:600;line-height:1.3;margin-bottom:.15rem;}
 .popup-tipo{font-size:.6rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
 .popup-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.9rem;padding:.15rem;flex-shrink:0;transition:color .15s;margin-top:-.1rem;}
 .popup-close:hover{color:var(--text);}
@@ -115,7 +139,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .popup-field{margin-bottom:.55rem;}
 .popup-field:last-child{margin-bottom:0;}
 .popup-field-label{font-size:.58rem;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:.2rem;}
-.popup-field-value{font-size:.82rem;color:var(--text2);line-height:1.6;font-family:var(--mono);}
+.popup-field-value{font-size:.78rem;color:var(--text2);line-height:1.5;font-family:var(--mono);}
 .popup-cota{display:inline-flex;align-items:center;gap:.35rem;background:var(--gdim);border:1px solid rgba(45,216,152,.2);border-radius:5px;padding:.28rem .6rem;font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--green);}
 
 /* Legenda */
@@ -124,7 +148,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 /* Zoom */
 .zoom-btns{position:absolute;top:.5rem;right:.65rem;z-index:40;display:flex;gap:.25rem;}
-.zoom-btn{width:38px;height:38px;border-radius:8px;background:rgba(17,19,24,.9);border:1px solid var(--border);color:var(--text2);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(4px);}
+.zoom-btn{width:30px;height:30px;border-radius:5px;background:rgba(17,19,24,.85);border:1px solid var(--border);color:var(--text2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(4px);}
 .zoom-btn:hover{border-color:var(--accent);color:var(--accent);}
 
 /* ── PANELS ── */
@@ -156,50 +180,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .conclusao.done .conclusao-title{color:var(--green);}
 .conclusao-ts{font-family:var(--mono);font-size:.72rem;color:var(--text2);}
 
-/* ── FULLSCREEN OVERLAY ── */
-#fs-overlay {
-  display: none;
-  position: fixed; inset: 0; z-index: 999;
-  background: #080a0e;
-  align-items: center; justify-content: center;
-  overflow: hidden;
-}
-#fs-overlay.open { display: flex; }
-#fs-wrap {
-  position: relative;
-  width: 100vw; height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
-/* o clone do img-wrap dentro do fs-wrap */
-#fs-wrap .img-wrap {
-  position: relative;
-  transform-origin: center center;
-  max-width: 100vw; max-height: 100vh;
-}
-#fs-wrap .img-wrap img {
-  max-width: 100vw; max-height: 100vh;
-  width: auto; height: auto;
-  object-fit: contain; touch-action: none;
-  display: block;
-}
-#fs-close {
-  position: fixed; top: .75rem; right: .75rem; z-index: 1000;
-  width: 44px; height: 44px; border-radius: 50%;
-  background: rgba(17,19,24,.95); border: 1px solid var(--border2);
-  color: var(--text); font-size: 1.1rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(6px);
-}
-#btn-expand {
-  position: absolute; bottom: .5rem; left: .65rem; z-index: 40;
-  width: 38px; height: 38px; border-radius: 8px;
-  background: rgba(17,19,24,.9); border: 1px solid var(--border);
-  color: var(--text2); font-size: 1rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(4px); transition: all .15s;
-}
-#btn-expand:hover { border-color: var(--accent); color: var(--accent); }
+/* ── BOTTOM TABS ── */
 .btabs{position:fixed;bottom:0;left:0;right:0;z-index:100;display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom);height:calc(50px + env(safe-area-inset-bottom));}
 .btab{flex:1;border:none;background:transparent;color:var(--text3);font-family:var(--sans);font-size:.6rem;font-weight:500;cursor:pointer;transition:color .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.18rem;padding:.5rem .25rem .4rem;}
 .btab.active{color:var(--accent);}
@@ -225,61 +206,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 #toast.ok{border-color:var(--green);color:var(--green);}
 #toast.err{border-color:var(--red);color:var(--red);}
-
-@media (max-width: 600px) {
-  /* ── Header mais compacto ── */
-  .header       { height: 44px; padding: 0 .75rem; gap: .5rem; }
-  .header-title { font-size: .85rem; }
-  .header-sub   { display: none; }
-
-  /* ── Nav bar mais fina ── */
-  .nav-bar { height: 40px; top: 44px; padding: .3rem .6rem; }
-
-  /* ── Stage ocupa o máximo ── */
-  .stage  { top: 84px; bottom: calc(52px + env(safe-area-inset-bottom)); }
-  .panel  { top: 84px; bottom: calc(52px + env(safe-area-inset-bottom)); }
-
-  /* ── Imagem ocupa o stage todo ── */
-  .img-wrap { max-width: 100%; max-height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
-  .img-wrap img { max-height: calc(100svh - 84px - 52px - env(safe-area-inset-bottom)); max-width: 100%; }
-
-  /* ── Legenda sobreposta (não empurra a imagem) ── */
-  .legenda { position: absolute; bottom: 0; left: 0; right: 0; font-size: .6rem; gap: .2rem .4rem; padding: .25rem .5rem; background: linear-gradient(transparent, rgba(8,10,14,.8)); pointer-events: none; }
-
-  /* ── Tab bar ── */
-  .btabs  { height: calc(52px + env(safe-area-inset-bottom)); }
-  .btab   { font-size: .62rem; gap: 3px; }
-  .btab svg { width: 19px; height: 19px; }
-
-  /* ── Popup flutuante e arrastável no mobile ── */
-  .popup {
-    position: fixed !important;
-    width: min(280px, calc(100vw - 32px)) !important;
-    max-height: 45vh;
-    overflow-y: auto;
-    border-radius: 14px;
-    z-index: 200 !important;
-    touch-action: none;
-  }
-  /* Indicador de drag */
-  .popup::before {
-    content: '';
-    display: block;
-    width: 36px; height: 4px;
-    background: var(--border2);
-    border-radius: 2px;
-    margin: 0 auto .55rem;
-  }
-  .popup-body { max-height: 28vh; overflow-y: auto; }
-
-  /* ── Botões zoom maiores ── */
-  .zoom-btns { top: .4rem; right: .5rem; gap: .3rem; }
-  .zoom-btn  { width: 40px; height: 40px; border-radius: 10px; font-size: 1.15rem; }
-
-  /* ── Pins menores no mobile ── */
-  .pin-inner { width: 26px !important; height: 26px !important; font-size: .68rem !important; }
-  .pin-outer { width: 26px !important; height: 26px !important; }
-}
 </style>
 </head>
 <body>
@@ -309,20 +235,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <div class="stage" id="stage">
   <div class="loading" id="stage-loading"><div class="spinner"></div>A carregar…</div>
   <div class="slides" id="slides" style="display:none"></div>
+  <div id="swap-overlay" class="swap-overlay"><img id="swap-img" src="" alt=""></div>
   <svg id="destaque-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:25;overflow:visible"></svg>
+  <button id="swap-back" class="swap-back" onclick="closeSwap()">← Voltar</button>
   <div class="zoom-btns">
     <button class="zoom-btn" onclick="zoom(1.35)">＋</button>
     <button class="zoom-btn" onclick="zoom(0)">⊙</button>
     <button class="zoom-btn" onclick="zoom(0.74)">－</button>
   </div>
-  <button id="btn-expand" onclick="openFullscreen()" title="Ver em ecrã inteiro">⛶</button>
   <div class="legenda" id="legenda"></div>
-</div>
-
-<!-- FULLSCREEN OVERLAY -->
-<div id="fs-overlay">
-  <button id="fs-close" onclick="closeFullscreen()">✕</button>
-  <div id="fs-wrap"></div>
 </div>
 
 <div class="panel" id="panel-materiais">
@@ -371,6 +292,7 @@ const S = {
   hotspots:{}, tiposCustom:[], anotacoes:{},
   materiais:[], matCheck:{}, ocorrencias:[], conclusao:null,
   activePopup:null,
+  swapActivo: false,
   Z:{scale:1,x:0,y:0}, swipeStart:null, pinchDist:0, isPinch:false, panStart:null,
 };
 
@@ -423,6 +345,9 @@ function buildSlides() {
   const wrap=document.getElementById('slides');
   wrap.style.display='block'; wrap.innerHTML='';
   if (!S.alcados.length) {wrap.innerHTML='<div class="empty" style="height:100%"><div class="empty-ico">📐</div>Sem alçados</div>';return;}
+  // Filtrar alçados visíveis para navegação (ocultos só via hotspot)
+  const alcadosVisiveis = S.alcados.filter(a=>!a.oculto);
+  // Construir todos os slides (incluindo ocultos) mas nav só mostra visíveis
   S.alcados.forEach((a,i)=>{
     const slide=document.createElement('div');
     slide.className='slide'+(i===0?' active':''); slide.id='slide-'+i;
@@ -461,17 +386,12 @@ function updateNav() {
 
 function buildNavDropdown() {
   const dd=document.getElementById('nav-dropdown');
-  dd.innerHTML='';
-  S.alcados.forEach((a,i)=>{
-    const item=document.createElement('div');
-    item.className='nav-dd-item'+(i===S.idx?' active':'');
-    item.innerHTML=`<span class="nav-dd-num">${i+1}</span><span class="nav-dd-name">${a.nome}</span>${i===S.idx?'<span class="nav-dd-check">✓</span>':''}`;
-    // usar touchend E click para cobrir mobile e desktop
-    const select=()=>{ goTo(i); closeNavDropdown(); };
-    item.addEventListener('touchend', ev=>{ ev.preventDefault(); select(); }, {passive:false});
-    item.addEventListener('click', select);
-    dd.appendChild(item);
-  });
+  dd.innerHTML=S.alcados.map((a,i)=>a.oculto?'':`
+    <div class="nav-dd-item${i===S.idx?' active':''}" onclick="goTo(${i});closeNavDropdown()">
+      <span class="nav-dd-num">${i+1}</span>
+      <span class="nav-dd-name">${a.nome}</span>
+      ${i===S.idx?'<span class="nav-dd-check">✓</span>':''}
+    </div>`).join('');
 }
 
 function toggleNavDropdown(){
@@ -507,7 +427,7 @@ window.goTo=function(idx){
     slides[prev].classList.remove('active');
     slides[idx].classList.remove('enter-l','enter-r');
     slides[idx].classList.add('active');
-    zoomReset(); closePopup(); hideDestaque(); updateNav();
+    zoomReset(); closePopup(); closeSwap(); hideDestaque(); updateNav();
     renderLegenda(idx);
     setTimeout(()=>slides[prev].classList.remove('active'),400);
   }));
@@ -526,8 +446,6 @@ document.getElementById('stage').addEventListener('wheel',e=>{e.preventDefault()
 
 const stage=document.getElementById('stage');
 stage.addEventListener('touchstart',e=>{
-  // Fechar popup ao tocar na imagem (pan, pinch, swipe)
-  if(document.getElementById('popup')&&!e.target.closest('.pin-wrap')&&!e.target.closest('.popup')&&!e.target.closest('#nav-wrap')) closePopup();
   if (e.touches.length===2){S.isPinch=true;S.pinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);e.preventDefault();}
   else if (e.touches.length===1){
     if (S.Z.scale>1) S.panStart={x:e.touches[0].clientX-S.Z.x,y:e.touches[0].clientY-S.Z.y};
@@ -564,7 +482,6 @@ function renderPins(idx) {
     const t=getTipo(h.tipo,S.tiposCustom);
     const pw=document.createElement('div');
     pw.className='pin-wrap'; pw.style.left=h.x+'%'; pw.style.top=h.y+'%';
-    pw.dataset.hsId = h.id || String(i);
     // Anel pulsante
     const outer=document.createElement('div');
     outer.className='pin-outer';
@@ -584,47 +501,6 @@ function renderPins(idx) {
   });
 }
 
-/* ── Drag com mouse (desktop) ── */
-function addMouseDrag(el, minL, maxL, minT, maxT, relativeToStage) {
-  let startX, startY, startLeft, startTop, dragging = false;
-  el.addEventListener('mousedown', ev => {
-    if (ev.target.closest('button')) return;
-    ev.preventDefault();
-    dragging = true;
-    startX = ev.clientX; startY = ev.clientY;
-    const r = el.getBoundingClientRect();
-    if (relativeToStage) {
-      const sr = stage.getBoundingClientRect();
-      startLeft = r.left - sr.left;
-      startTop  = r.top  - sr.top;
-    } else {
-      startLeft = r.left;
-      startTop  = r.top;
-    }
-    el.style.cursor = 'grabbing';
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
-  });
-  function onMove(ev) {
-    if (!dragging) return;
-    const dx = ev.clientX - startX, dy = ev.clientY - startY;
-    const newLeft = Math.max(minL, Math.min(startLeft + dx, maxL));
-    const newTop  = Math.max(minT, Math.min(startTop  + dy, maxT));
-    el.style.left = newLeft + 'px';
-    el.style.top  = newTop  + 'px';
-  }
-  function onUp(ev) {
-    dragging = false;
-    el.style.cursor = 'default';
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup',   onUp);
-    // impedir que o click seguinte feche o popup se houve movimento
-    if (Math.abs(ev.clientX - startX) > 4 || Math.abs(ev.clientY - startY) > 4) {
-      ev.stopPropagation();
-    }
-  }
-}
-
 /* ── POPUP ESTRUTURADO ── */
 function openPopup(h,pw,slideIdx) {
   closePopup();
@@ -634,6 +510,7 @@ function openPopup(h,pw,slideIdx) {
   const popup=document.createElement('div');
   popup.className='popup'; popup.id='popup';
 
+  // Construir botões de link
   const alcadoDestino = h.linkAlcado ? S.alcados.find(a=>a.key===h.linkAlcado) : null;
   const linkBtns = [];
   if (h.url) linkBtns.push(`<button onclick="openUrlModal('${h.url.replace(/'/g,"\'")}','${h.label.replace(/'/g,"\'")}');closePopup()" style="display:flex;align-items:center;gap:.4rem;width:100%;padding:.42rem .65rem;background:var(--adim);border:1px solid rgba(79,124,255,.3);border-radius:5px;color:var(--accent);font-family:var(--mono);font-size:.7rem;cursor:pointer;transition:all .15s">🔗 Ver referência</button>`);
@@ -657,84 +534,23 @@ function openPopup(h,pw,slideIdx) {
       ${linkBtns.length?`<div style="display:flex;flex-direction:column;gap:.3rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border)">${linkBtns.join('')}</div>`:''}
     </div>`;
 
-  // Contentor e referência de imagem — stage normal ou fullscreen
-  const inFS = S.fsMode;
-  const container = inFS ? document.getElementById('fs-overlay') : null;
-  const fsIw = inFS ? document.querySelector('#fs-wrap .img-wrap') : null;
-  const img = inFS ? fsIw?.querySelector('img') : document.querySelector(`#iw-${slideIdx} img`);
-  const ctRect = inFS ? document.getElementById('fs-overlay').getBoundingClientRect() : stage.getBoundingClientRect();
-  const iRect = img ? img.getBoundingClientRect() : ctRect;
-
-  const isMobile = window.innerWidth <= 600;
-  const margin = 12;
-  const popW = Math.min(280, window.innerWidth - 32);
-  const popH = 180;
-  // No fullscreen não há tab bar
-  const tabH = inFS ? 0 : (isMobile ? 72 : 0);
-
-  // Posição absoluta na viewport do pin
-  const pinX = iRect.left + (h.x / 100) * iRect.width;
-  const pinY = iRect.top  + (h.y / 100) * iRect.height;
-
-  if (isMobile || inFS) {
-    // Posição fixed na viewport
-    let left = pinX - popW / 2;
-    let top  = pinY + 24;
-    left = Math.max(margin, Math.min(left, window.innerWidth  - popW - margin));
-    if (top + popH + tabH > window.innerHeight) top = Math.max(margin, pinY - popH - 24);
-    top = Math.min(top, window.innerHeight - tabH - popH - margin);
-
-    popup.style.position = 'fixed';
-    popup.style.left   = left + 'px';
-    popup.style.top    = top  + 'px';
-    popup.style.right  = 'auto';
-    popup.style.bottom = 'auto';
-    // No fullscreen appendar ao overlay (z-index acima), senão ao body
-    (inFS ? document.getElementById('fs-overlay') : document.body).appendChild(popup);
-
-    // Drag touch
-    let dragStartX, dragStartY, popStartLeft, popStartTop, isDragging = false, hasDragged = false;
-    popup.addEventListener('touchstart', ev => {
-      if (ev.target.closest('button')) return;
-      const t0 = ev.touches[0];
-      dragStartX = t0.clientX; dragStartY = t0.clientY;
-      const r = popup.getBoundingClientRect();
-      popStartLeft = r.left; popStartTop = r.top;
-      isDragging = true; hasDragged = false;
-      ev.stopPropagation();
-    }, {passive:true});
-    popup.addEventListener('touchmove', ev => {
-      if (!isDragging) return;
-      const t0 = ev.touches[0];
-      const dx = t0.clientX - dragStartX, dy = t0.clientY - dragStartY;
-      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasDragged = true;
-      let newLeft = popStartLeft + dx;
-      let newTop  = popStartTop  + dy;
-      newLeft = Math.max(margin, Math.min(newLeft, window.innerWidth  - popW - margin));
-      newTop  = Math.max(margin, Math.min(newTop,  window.innerHeight - tabH - 60));
-      popup.style.left = newLeft + 'px';
-      popup.style.top  = newTop  + 'px';
-      ev.preventDefault();
-    }, {passive:false});
-    popup.addEventListener('touchend', ev => {
-      isDragging = false;
-      if (hasDragged) { ev.stopPropagation(); hasDragged = false; }
-    }, {passive:true});
-    addMouseDrag(popup, margin, window.innerWidth - popW - margin, margin, window.innerHeight - tabH - 60, false);
-
-  } else {
-    // Desktop normal — relativo ao stage
-    const px = iRect.left - ctRect.left + (h.x / 100) * iRect.width;
-    const py = iRect.top  - ctRect.top  + (h.y / 100) * iRect.height;
-    popup.style.position = 'absolute';
-    popup.style.left = Math.min(px + 14, ctRect.width - 252) + 'px';
-    popup.style.top  = (py + 200 > ctRect.height) ? Math.max(4, py - 210) + 'px' : (py + 14) + 'px';
-    stage.appendChild(popup);
-    addMouseDrag(popup, 4, ctRect.width - 284, 4, ctRect.height - 60, true);
+  // Posicionar popup
+  const img=document.querySelector(`#iw-${slideIdx} img`);
+  const stRect=stage.getBoundingClientRect();
+  const iRect=img?img.getBoundingClientRect():stRect;
+  const px=iRect.left-stRect.left+(h.x/100)*iRect.width;
+  const py=iRect.top-stRect.top+(h.y/100)*iRect.height;
+  popup.style.position='absolute';
+  popup.style.left=Math.min(px+14,stRect.width-252)+'px';
+  popup.style.top=(py+200>stRect.height)?Math.max(4,py-210)+'px':(py+14)+'px';
+  stage.appendChild(popup);
+  S.activePopup={id:h.id};
+  // Swap de imagem se definido
+  if (h.alcadoSwap) {
+    openSwap(h.alcadoSwap, slideIdx);
+  } else if (h.linhas?.length || h.linha) {
+    showDestaque(h, slideIdx);
   }
-
-  S.activePopup = {id: h.id};
-  if (h.linhas?.length || h.linha) showDestaque(h, slideIdx);
 }
 
 // Guardar referência do destaque activo para re-render
@@ -785,6 +601,38 @@ function hideDestaque() {
   });
 }
 
+async function openSwap(alcadoKey, slideIdx) {
+  // Buscar imagem do alçado oculto
+  const a = S.alcados.find(x=>x.key===alcadoKey);
+  if (!a) return;
+  let img = a.img;
+  if (!img && a.temImg) {
+    try {
+      const snap = await getDoc(doc(db,'obras',S.obraId+'_SKIP'));
+      // imagem já carregada no loadImagens
+    } catch(_){}
+    img = a.img;
+  }
+  if (!img) { toast('Alçado sem imagem','err'); return; }
+  const overlay = document.getElementById('swap-overlay');
+  const swapImg = document.getElementById('swap-img');
+  const backBtn = document.getElementById('swap-back');
+  swapImg.src = img;
+  overlay.className = 'swap-overlay' + (a.tipo==='planta' ? ' planta' : '') + ' visible';
+  backBtn.style.display = 'block';
+  S.swapActivo = true;
+  hideDestaque();
+  toast('← Clica em Voltar para ver o alçado principal','ok');
+}
+
+window.closeSwap = () => {
+  const overlay = document.getElementById('swap-overlay');
+  const backBtn = document.getElementById('swap-back');
+  overlay.classList.remove('visible');
+  backBtn.style.display = 'none';
+  S.swapActivo = false;
+};
+
 function closePopup(){
   document.getElementById('popup')?.remove();
   document.querySelectorAll('.pin-wrap').forEach(p=>p.classList.remove('active'));
@@ -799,8 +647,7 @@ window.goToAlcado=key=>{
   const idx=S.alcados.findIndex(a=>a.key===key);
   if (idx>=0) goTo(idx);
 };
-// Fechar popup ao clicar/tocar fora — body também (mobile)
-// fecho por tap limpo no stage — ver touchend acima
+stage.addEventListener('click',ev=>{if(!ev.target.closest('.pin-wrap')&&!ev.target.closest('.popup'))closePopup();});
 
 /* ── ANOTAÇÕES ── */
 function svgV(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;}
@@ -938,112 +785,6 @@ window.confirmarConclusao=async()=>{
     toast('Conclusão registada ✓','ok');
   }catch(e){btn.disabled=false;btn.textContent='Marcar como concluído';toast('Erro: '+e.message,'err');}
 };
-
-/* ── FULLSCREEN ── */
-const FS = { scale:1, x:0, y:0, isPinch:false, pinchDist:0, panStart:null };
-
-function fsApplyZoom() {
-  const iw = document.querySelector('#fs-wrap .img-wrap');
-  if (!iw) return;
-  iw.style.transform = FS.scale > 1
-    ? `scale(${FS.scale}) translate(${FS.x/FS.scale}px,${FS.y/FS.scale}px)`
-    : '';
-}
-
-window.openFullscreen = function() {
-  const iw = document.getElementById('iw-' + S.idx);
-  if (!iw) return;
-  closePopup();
-  const clone = iw.cloneNode(true);
-  clone.style.transform = '';
-  const key = S.alcados[S.idx]?.key;
-  const hss = key ? (S.hotspots[key] || []) : [];
-  // Reanexar listeners aos pins do clone via hsId
-  clone.querySelectorAll('.pin-wrap').forEach(pw => {
-    const h = hss.find(hs => (hs.id || String(hss.indexOf(hs))) === pw.dataset.hsId)
-           || hss.find((_, i) => String(i) === pw.dataset.hsId);
-    if (h) pw.addEventListener('click', ev => { ev.stopPropagation(); openPopup(h, pw, S.idx); });
-  });
-  const fsWrap = document.getElementById('fs-wrap');
-  fsWrap.innerHTML = '';
-  fsWrap.appendChild(clone);
-  FS.scale = 1; FS.x = 0; FS.y = 0;
-  S.fsMode = true;
-  document.getElementById('fs-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-};
-
-window.closeFullscreen = function() {
-  closePopup();
-  S.fsMode = false;
-  document.getElementById('fs-overlay').classList.remove('open');
-  document.getElementById('fs-wrap').innerHTML = '';
-  document.body.style.overflow = '';
-  FS.scale = 1; FS.x = 0; FS.y = 0;
-};
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (document.getElementById('popup')) closePopup(); else closeFullscreen(); } });
-
-const fsOv = document.getElementById('fs-overlay');
-fsOv.addEventListener('touchstart', e => {
-  // Toque directo no fundo do overlay (não em pin, popup ou botão)
-  if (e.target === fsOv || e.target === document.getElementById('fs-wrap')) {
-    if (document.getElementById('popup')) { closePopup(); return; }
-    closeFullscreen(); return;
-  }
-  if (e.touches.length === 2) {
-    FS.isPinch = true;
-    FS.pinchDist = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY);
-    e.preventDefault();
-  } else if (e.touches.length === 1 && FS.scale > 1) {
-    FS.panStart = { x: e.touches[0].clientX - FS.x, y: e.touches[0].clientY - FS.y };
-  } else if (e.touches.length === 1) {
-    // Toque na imagem sem zoom — fechar popup se aberto
-    if (!e.target.closest('.pin-wrap') && !e.target.closest('.popup')) {
-      if (document.getElementById('popup')) { closePopup(); return; }
-    }
-  }
-}, {passive:false});
-
-fsOv.addEventListener('touchmove', e => {
-  if (e.touches.length === 2 && FS.isPinch) {
-    e.preventDefault();
-    const d = Math.hypot(
-      e.touches[0].clientX - e.touches[1].clientX,
-      e.touches[0].clientY - e.touches[1].clientY);
-    FS.scale = Math.min(8, Math.max(1, FS.scale * (d / FS.pinchDist)));
-    FS.pinchDist = d;
-    fsApplyZoom();
-  } else if (e.touches.length === 1 && FS.scale > 1 && FS.panStart) {
-    e.preventDefault();
-    if (document.getElementById('popup')) closePopup();
-    FS.x = e.touches[0].clientX - FS.panStart.x;
-    FS.y = e.touches[0].clientY - FS.panStart.y;
-    fsApplyZoom();
-  }
-}, {passive:false});
-
-fsOv.addEventListener('touchend', () => { FS.isPinch = false; FS.panStart = null; }, {passive:true});
-
-fsOv.addEventListener('wheel', e => {
-  e.preventDefault();
-  FS.scale = Math.min(8, Math.max(1, FS.scale * (e.deltaY < 0 ? 1.15 : 0.87)));
-  if (FS.scale <= 1) { FS.x = 0; FS.y = 0; }
-  fsApplyZoom();
-}, {passive:false});
-
-fsOv.addEventListener('mousedown', e => {
-  if (e.target === fsOv || e.target.closest('#fs-close') || e.target.closest('.popup') || e.target.closest('.pin-wrap')) return;
-  if (FS.scale <= 1) return;
-  if (document.getElementById('popup')) closePopup();
-  const startX = e.clientX - FS.x, startY = e.clientY - FS.y;
-  const onMove = ev => { FS.x = ev.clientX - startX; FS.y = ev.clientY - startY; fsApplyZoom(); };
-  const onUp   = ()  => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-});
 
 /* ── TOAST ── */
 function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+(type||'');clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2500);}

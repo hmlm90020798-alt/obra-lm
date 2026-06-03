@@ -465,6 +465,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
         <option value="">— Nenhum —</option>
       </select>
     </div>
+    <div class="field">
+      <label>Mostrar alçado ao clicar <span style="font-size:.6rem;color:var(--text3)">(substitui imagem, hotspots mantêm-se)</span></label>
+      <select id="hs-alcado-swap" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.78rem;padding:.42rem .65rem;border-radius:4px;outline:none">
+        <option value="">— Nenhum —</option>
+      </select>
+    </div>
     <div class="rp-coords" id="rp-coords"></div>
     <label class="bib-check" id="bib-check-row"><input type="checkbox" id="hs-bib"> Guardar também na biblioteca</label>
     <div class="btn-row">
@@ -722,7 +728,9 @@ function renderAlcados() {
       <div class="alcado-handle" title="Arrastar">⠿</div>
       <div class="alcado-dot"></div>
       <span class="alcado-name">${a.nome}</span>
+      ${a.oculto?'<span style="font-family:var(--mono);font-size:.55rem;padding:.1rem .3rem;background:rgba(232,162,52,.15);color:#e8a234;border:1px solid rgba(232,162,52,.3);border-radius:3px;flex-shrink:0">oculto</span>':''}
       <span class="alcado-count">${n}</span>
+      <button onclick="toggleOculto('${a.key}',event)" title="${a.oculto?'Tornar visível':'Ocultar'}" style="background:none;border:none;cursor:pointer;font-size:.8rem;color:${a.oculto?'#e8a234':'var(--text3)'}">👁</button>
       <button class="alcado-del" onclick="delAlcado('${a.key}',event)" title="Eliminar">✕</button>`;
     row.onclick = e => { if(e.target.closest('.alcado-del,.alcado-handle')) return; activateAlcado(a.key); };
     row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain',a.key); setTimeout(()=>row.classList.add('dragging'),0); });
@@ -757,6 +765,15 @@ window.addAlcado = () => {
   renderAlcados();
   activateAlcado(key);
   toast('Alçado adicionado','ok');
+};
+
+window.toggleOculto = (key, e) => {
+  if (e) e.stopPropagation();
+  const a = S.alcados.find(x=>x.key===key);
+  if (!a) return;
+  a.oculto = !a.oculto;
+  renderAlcados();
+  toast(a.oculto ? '🔒 Alçado oculto' : '👁 Alçado visível', 'ok');
 };
 
 window.delAlcado = (key, e) => {
@@ -1030,6 +1047,12 @@ function openRp(editMode) {
       S.alcados.filter(a=>a.key!==S.activeKey)
         .map(a=>`<option value="${a.key}">${a.nome}</option>`).join('');
   }
+  const selSwap = document.getElementById('hs-alcado-swap');
+  if (selSwap) {
+    selSwap.innerHTML = '<option value="">— Nenhum —</option>' +
+      S.alcados.filter(a=>a.key!==S.activeKey)
+        .map(a=>`<option value="${a.key}">${a.oculto?'🔒 ':''}${a.nome}</option>`).join('');
+  }
 }
 window.closeRp = () => {
   document.getElementById('right').classList.remove('open');
@@ -1184,6 +1207,7 @@ window.saveHs = () => {
   const cli        = document.getElementById('hs-cli').value.trim();
   const url        = document.getElementById('hs-url').value.trim();
   const linkAlcado = document.getElementById('hs-link-alcado').value;
+  const alcadoSwap = document.getElementById('hs-alcado-swap').value;
   const toBib      = document.getElementById('hs-bib').checked;
   if (!label) return toast('Insere um label','err');
 
@@ -1193,7 +1217,7 @@ window.saveHs = () => {
   if (S.editId) {
     const h = S.hotspots[key].find(x=>x.id===S.editId);
     if (h) {
-      Object.assign(h, { label, cota, tec, cli, url, linkAlcado, tipo:curTipo, pinSize:curSz });
+      Object.assign(h, { label, cota, tec, cli, url, linkAlcado, alcadoSwap, tipo:curTipo, pinSize:curSz });
     }
     const bh = S.biblioteca.find(b=>b.id===h?.bibId);
     if (bh) Object.assign(bh, { label, cota, tec, cli, tipo:curTipo });
@@ -1205,7 +1229,7 @@ window.saveHs = () => {
       S.biblioteca.push({ id:bibId, tipo:curTipo, label, cota, tec, cli });
       renderBib();
     }
-    S.hotspots[key].push({ id:'hs_'+Date.now(), x:S.pendingXY.x, y:S.pendingXY.y, tipo:curTipo, pinSize:curSz, label, cota, tec, cli, url, linkAlcado, bibId });
+    S.hotspots[key].push({ id:'hs_'+Date.now(), x:S.pendingXY.x, y:S.pendingXY.y, tipo:curTipo, pinSize:curSz, label, cota, tec, cli, url, linkAlcado, alcadoSwap, bibId });
   }
 
   closeRp(); renderHsList(); renderMarkers(); renderAlcados();
@@ -1252,6 +1276,8 @@ window.editHs = id => {
   setTimeout(()=>{
     const selAlc=document.getElementById('hs-link-alcado');
     if (selAlc && h.linkAlcado) selAlc.value=h.linkAlcado;
+    const selSwap=document.getElementById('hs-alcado-swap');
+    if (selSwap && h.alcadoSwap) selSwap.value=h.alcadoSwap;
     const linhas = h.linhas || (h.linha ? [h.linha] : []);
     S.defLinhaEditIdx = linhas.length > 0 ? linhas.length-1 : null;
     S._hoverLinhaIdx = null;
