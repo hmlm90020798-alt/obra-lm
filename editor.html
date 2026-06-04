@@ -172,21 +172,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .mk { position: absolute; transform: translate(-50%,-50%); z-index: 10; }
 
 /* Anotações SVG */
-.anot-text { pointer-events: none; font-family: 'DM Mono', monospace; }
-#linha-preview-svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:30; }
-.linha-edit-line { stroke-linecap:round; }
-.linha-edit-ctrl { cursor:grab; transition:r .15s; }
 .anot-del-btn { cursor: pointer; opacity: 0; transition: opacity .15s; }
-.anot-group:hover .anot-del-btn { opacity: 1; }
-.img-wrap.anotando { cursor: crosshair; }
-.anot-ctrl { transition: opacity .2s; }
-.anot-group:hover .anot-ctrl { opacity: .9 !important; }
-.anot-pulse { animation: anotPulse 3s ease-out infinite; }
 @keyframes anotPulse { 0%{transform-origin:center;transform:scale(1);opacity:.25;} 60%{transform:scale(1.7);opacity:0;} 100%{transform:scale(1.7);opacity:0;} }
-.anot-popup { display: none; }
-.anot-group:hover .anot-popup,
-.anot-group.sel .anot-popup { display: block; }
-.anot-tool-btn.active { background: var(--accent) !important; color: #fff !important; border-color: var(--accent) !important; }
 .mk svg { display: block; cursor: grab; transition: transform .15s, filter .15s; filter: drop-shadow(0 2px 5px rgba(0,0,0,.7)); }
 .mk svg:hover { transform: scale(1.18); filter: drop-shadow(0 2px 5px rgba(0,0,0,.7)) drop-shadow(0 0 6px rgba(255,255,255,.2)); }
 .mk.on svg { transform: scale(1.22); filter: drop-shadow(0 0 8px rgba(255,255,255,.35)); }
@@ -371,17 +358,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
       <button class="mode-btn on" id="btn-ver"     onclick="setMode('ver')">VER</button>
       <button class="mode-btn"    id="btn-colocar" onclick="setMode('colocar')">COLOCAR</button>
     </div>
-    <div id="anot-tools" style="display:none;align-items:center;gap:.45rem;flex-wrap:wrap">
-      <span style="font-size:.65rem;color:var(--text3);font-family:var(--mono)">Clica para colocar</span>
-      <div style="display:flex;align-items:center;gap:.25rem">
-        <button class="rot-btn" onclick="stepAnotSz(-1)" style="font-size:.75rem;padding:.22rem .45rem;min-width:24px">−</button>
-        <span id="anot-sz-val" style="font-family:var(--mono);font-size:.68rem;color:var(--text);min-width:28px;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:.2rem .3rem">12</span>
-        <button class="rot-btn" onclick="stepAnotSz(1)"  style="font-size:.75rem;padding:.22rem .45rem;min-width:24px">＋</button>
-      </div>
       <div style="display:flex;align-items:center;gap:.3rem">
-        <button class="rot-btn" onclick="adjustAnotRot(-15)" style="font-size:.7rem;padding:.22rem .4rem" title="Rodar -15°">↺</button>
         <span id="anot-rot-val" style="font-family:var(--mono);font-size:.62rem;color:var(--text3);min-width:28px;text-align:center">0°</span>
-        <button class="rot-btn" onclick="adjustAnotRot(15)"  style="font-size:.7rem;padding:.22rem .4rem" title="Rodar +15°">↻</button>
       </div>
       <select id="anot-cor" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.65rem;padding:.25rem .4rem;border-radius:4px;outline:none">
         <option value="#e8a234">Âmbar</option>
@@ -410,13 +388,6 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
   <div class="stage" id="stage" style="display:none">
     <div class="img-wrap" id="img-wrap">
       <img id="alcado-img" src="" alt="">
-      <svg id="anot-svg" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible">
-        <defs>
-          <marker id="arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L0,6 L8,3 z" fill="currentColor"/>
-          </marker>
-        </defs>
-      </svg>
     </div>
   </div>
 
@@ -689,7 +660,6 @@ const S = {
   mode: 'ver',
   anotTool: 'texto',
   anotStep: null,
-  _hoverLinhaIdx: null,
   anotFontSz: 12,
   anotRot: 0,
   selAnotId: null,
@@ -911,7 +881,6 @@ function activateAlcado(key) {
   else showUpload();
 
   renderMarkers();
-  renderAnotacoes();
   const btn = document.getElementById('btn-rot-confirm');
   btn.style.display = (img && !a.rotacaoConfirmada && a.rotation) ? 'block' : 'none';
 }
@@ -1002,42 +971,18 @@ window.confirmarRotacao = () => {
 /* ══════════════════════════════════════════
    MODO
 ══════════════════════════════════════════ */
-function updateSzDisplay() {
-  const el = document.getElementById('anot-sz-val');
-  if (el) el.textContent = S.anotFontSz;
-}
 
-window.stepAnotSz = delta => {
-  S.anotFontSz = Math.min(32, Math.max(8, (S.anotFontSz || 12) + delta));
-  updateSzDisplay();
-  if (S.selAnotId) {
-    const an = (S.anotacoes[S.activeKey]||[]).find(a=>a.id===S.selAnotId);
-    if (an) { an.fontSz = S.anotFontSz; renderAnotacoes(); }
-  }
-};
 
 // manter compatibilidade com código antigo
 window.setAnotSz = sz => {};
 
-window.adjustAnotRot = delta => {
-  S.anotRot = ((S.anotRot + delta) % 360 + 360) % 360;
-  document.getElementById('anot-rot-val').textContent = S.anotRot + '°';
-  // Se há anotação seleccionada, actualizar
-  if (S.selAnotId) {
-    const an = (S.anotacoes[S.activeKey]||[]).find(a=>a.id===S.selAnotId);
-    if (an) { an.rot = S.anotRot; renderAnotacoes(); }
-  }
-};
 
 window.setMode = m => {
   S.mode = m;
   S.anotStep = null;
   document.getElementById('btn-ver').classList.toggle('on',    m==='ver');
   document.getElementById('btn-colocar').classList.toggle('on', m==='colocar');
-  document.getElementById('btn-anotar').classList.toggle('on',  m==='anotar');
   document.getElementById('img-wrap').classList.toggle('placing', m==='colocar');
-  document.getElementById('img-wrap').classList.toggle('anotando', m==='anotar');
-  document.getElementById('anot-tools').style.display = m==='anotar' ? 'flex' : 'none';
   document.getElementById('canvas-hint').textContent =
     m==='colocar' ? 'Clica na imagem para colocar hotspot' :
     m==='anotar'  ? 'Clica para colocar anotação' : '';
@@ -1056,11 +1001,7 @@ window.setMode = m => {
 document.getElementById('img-wrap').addEventListener('click', ev => {
 
 
-  if (S.mode==='anotar' && !ev.target.closest('.anot-group')) {
-    S.selAnotId = null;
-    renderAnotacoes();
-  }
-  if (S.mode==='colocar') {
+  if (S.mode==='anotar' && !ev.target.closest('  if (S.mode==='colocar') {
     if (!S.activeKey) return toast('Selecciona um alçado','err');
     const a = S.alcados.find(x=>x.key===S.activeKey);
     if (a?.img && !a.rotacaoConfirmada && a.rotation) return toast('Confirma a rotação antes de colocar hotspots','err');
@@ -1074,96 +1015,6 @@ document.getElementById('img-wrap').addEventListener('click', ev => {
     openRp(false);
     return;
   }
-
-  if (S.mode==='anotar') {
-    if (!S.activeKey) return toast('Selecciona um alçado','err');
-    const img  = document.getElementById('alcado-img');
-    const rect = img.getBoundingClientRect();
-    const x = +((ev.clientX-rect.left)/rect.width*100).toFixed(2);
-    const y = +((ev.clientY-rect.top)/rect.height*100).toFixed(2);
-    const cor = document.getElementById('anot-cor').value;
-    const texto = prompt('Nota:');
-    if (!texto) return;
-    addAnotacao({ id:'an_'+Date.now(), tipo:'texto', x1:x, y1:y, x2:x, y2:y, texto, cor, fontSz:S.anotFontSz, rot:S.anotRot });
-  }
-});
-
-document.getElementById('img-wrap').addEventListener('mousemove', ev => {
-  const img = document.getElementById('alcado-img');
-  if (!img.src || img.src===location.href) return;
-  const r = img.getBoundingClientRect();
-  document.getElementById('coord-pill').textContent =
-    `${((ev.clientX-r.left)/r.width*100).toFixed(1)}% · ${((ev.clientY-r.top)/r.height*100).toFixed(1)}%`;
-});
-
-/* ══════════════════════════════════════════
-   RIGHT PANEL
-══════════════════════════════════════════ */
-function openRp(editMode) {
-  document.getElementById('right').classList.add('open');
-  document.getElementById('bib-check-row').style.display = editMode ? 'none' : 'flex';
-  document.getElementById('rp-title').textContent = editMode ? 'Editar Hotspot' : 'Novo Hotspot';
-  if (!editMode) {
-    // Limpar todos os campos para novo hotspot
-    document.getElementById('hs-label').value = '';
-    document.getElementById('hs-cota').value  = '';
-    document.getElementById('hs-tec').value   = '';
-    document.getElementById('hs-url').value   = '';
-    const laEl=document.getElementById('hs-link-alcado');if(laEl)laEl.value='';
-    document.getElementById('hs-bib').checked = false;
-    document.getElementById('rp-coords').textContent = S.pendingXY
-      ? `x:${S.pendingXY.x}%  y:${S.pendingXY.y}%` : '';
-    selTipo('tomada');
-    setSz('m');
-  }
-  renderTipoGrid();
-  // Popular dropdown de alçados (excluindo o actual)
-
-  const selAlc = document.getElementById('hs-link-alcado');
-  if (selAlc) {
-    selAlc.innerHTML = '<option value="">— Nenhum —</option>' +
-      S.alcados.filter(a=>a.key!==S.activeKey && !a.oculto)
-        .map(a=>`<option value="${a.key}">${a.nome}</option>`).join('');
-  }
-  const selSwap = document.getElementById('hs-alcado-swap');
-  if (selSwap) {
-    selSwap.innerHTML = '<option value="">— Nenhum —</option>' +
-      S.alcados.filter(a=>a.key!==S.activeKey)
-        .map(a=>`<option value="${a.key}">${a.oculto?'🔒 ':''}${a.nome}</option>`).join('');
-  }
-}
-window.closeRp = () => {
-  document.getElementById('right').classList.remove('open');
-  S.pendingXY=null; S.editId=null;
-  document.querySelectorAll('.mk').forEach(m=>m.classList.remove('on'));
-  S.selHsId=null;
-};
-
-/* ── Tipo dropdown ─── */
-function renderTipoGrid() {
-  const sel = document.getElementById('tipo-select');
-  if (!sel) return;
-  // Construir opções agrupadas
-  const allTipos = [...TIPOS, ...S.tiposGlobais, ...S.tiposCustom];
-  const grupos   = [...new Set(allTipos.map(t=>t.grupo||'custom'))];
-  sel.innerHTML  = '';
-  grupos.forEach(g => {
-    const grpLabel = GRUPOS[g] || 'Personalizados';
-    const items    = allTipos.filter(t=>(t.grupo||'custom')===g);
-    if (!items.length) return;
-    const optgrp   = document.createElement('optgroup');
-    optgrp.label   = grpLabel;
-    items.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t.id;
-      opt.textContent = t.label;
-      if (t.id === curTipo) opt.selected = true;
-      optgrp.appendChild(opt);
-    });
-    sel.appendChild(optgrp);
-  });
-  updateTipoPreview();
-}
 
 function updateTipoPreview() {
   const t    = getTipo(curTipo);
@@ -1285,43 +1136,9 @@ window.delHs = (id,e) => {
 
 
 // ── Utilitário SVG ────────────────────────────────────────────
-function svgEl(tag, attrs) {
-  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-  Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
-  return el;
-}
 
-function svgDot(g, tx, ty, cor, r=6) {
-  // Ponto externo pulsante
-  g.appendChild(svgEl('circle',{cx:tx,cy:ty,r:String(r+3),fill:cor,opacity:'.18','class':'anot-pulse'}));
-  // Ponto principal
-  g.appendChild(svgEl('circle',{cx:tx,cy:ty,r:String(r),fill:cor,opacity:'.9','class':'anot-dot'}));
-}
 
-function svgPopupLabel(g, tx, ty, texto, cor, fs=12, rot=0) {
-  if (!texto) return;
-  const pad=Math.round(fs*.45), ly=ty;
-  const tw = Math.max(texto.length * fs * 0.62 + pad*2, 36);
-  const th = fs + pad*2;
-  // Popup — posicionar acima do ponto
-  const py = ty - th/2 - 12;
-  const grp = svgEl('g', {'class':'anot-popup'});
-  if (rot) grp.setAttribute('transform',`rotate(${rot},${tx},${ty})`);
-  // Cauda do popup
-  grp.appendChild(svgEl('path',{d:`M${tx-5},${py+th/2} L${tx},${py+th/2+7} L${tx+5},${py+th/2}`,fill:'#1e2030',stroke:cor,'stroke-width':'1','stroke-linejoin':'round'}));
-  // Caixa
-  grp.appendChild(svgEl('rect',{x:tx-tw/2,y:py-th/2,width:tw,height:th,rx:'5',fill:'#1e2030',stroke:cor,'stroke-width':'1.5'}));
-  // Texto
-  const t=svgEl('text',{x:tx,y:py+1,'text-anchor':'middle','dominant-baseline':'middle',fill:cor,'font-size':fs,'font-family':'DM Mono,monospace','font-weight':'600'});
-  t.textContent=texto; grp.appendChild(t);
-  g.appendChild(grp);
-}
 
-function svgLabel(g, tx, ty, texto, cor, offsetY=0, dynFs=12, rot=0) {
-  // No editor modo ANOTAR — mostrar sempre
-  svgDot(g, tx, ty+offsetY, cor, Math.max(5, dynFs*0.4));
-  svgPopupLabel(g, tx, ty+offsetY, texto, cor, dynFs, rot);
-}
 
 function svgDelBtn(id, dx, dy) {
   const delG = svgEl('g',{'class':'anot-del-btn','data-del':id});
@@ -1332,123 +1149,8 @@ function svgDelBtn(id, dx, dy) {
   return delG;
 }
 
-function syncAnotSVG() {
-  // Sincronizar SVG com posição e dimensões exactas da imagem
-  const svg = document.getElementById('anot-svg');
-  const img = document.getElementById('alcado-img');
-  if (!svg || !img) return;
-  const wrap = document.getElementById('img-wrap');
-  const wRect = wrap.getBoundingClientRect();
-  const iRect = img.getBoundingClientRect();
-  const dx = iRect.left - wRect.left;
-  const dy = iRect.top  - wRect.top;
-  svg.style.left   = dx + 'px';
-  svg.style.top    = dy + 'px';
-  svg.style.width  = iRect.width  + 'px';
-  svg.style.height = iRect.height + 'px';
-  svg.setAttribute('viewBox', `0 0 ${iRect.width} ${iRect.height}`);
-}
 
-function renderAnotacoes() {
-  const svg = document.getElementById('anot-svg');
-  if (!svg) return;
-  syncAnotSVG();
-  while (svg.children.length > 1) svg.removeChild(svg.lastChild);
 
-  const img = document.getElementById('alcado-img');
-  if (!img) return;
-  const iRect = img.getBoundingClientRect();
-  const W = iRect.width  || 800;
-  const H = iRect.height || 600;
-  // Escalar espessura e texto com a imagem
-  const scale = W / 800;
-  const sw = Math.max(1.5, 2.5 * scale);
-  const fs = Math.max(9, Math.round(11 * scale));
-  const anots = S.anotacoes[S.activeKey] || [];
-
-  anots.forEach(an => {
-    const x1=an.x1/100*W, y1=an.y1/100*H;
-    const cor = an.cor || '#e8a234';
-    const g   = svgEl('g',{'class':'anot-group','data-id':an.id});
-
-    // ── NOTA DE TEXTO — ponto + popup ────────────────────────
-    const anotFs  = Math.max(8, Math.round((an.fontSz || 12) * scale));
-    const anotRot = an.rot || 0;
-    const dotR    = Math.max(5, Math.round(anotFs * 0.45));
-    // Se seleccionada — popup sempre visível (adicionar classe sel)
-    if (S.selAnotId === an.id) g.classList.add('sel');
-    svgDot(g, x1, y1, cor, dotR);
-    svgPopupLabel(g, x1, y1, an.texto, cor, anotFs, anotRot);
-    g.appendChild(svgDelBtn(an.id, x1, y1-dotR-12));
-
-    // ── Drag para mover toda a anotação ──────────────────────
-    g.style.cursor = 'move';
-    // Click simples — seleccionar e sincronizar controlos
-    g.addEventListener('click', ev => {
-      if (ev.target.closest('.anot-del-btn')) return;
-      ev.stopPropagation();
-      S.selAnotId = an.id;
-      S.anotFontSz = an.fontSz || 12;
-      S.anotRot    = an.rot    || 0;
-      updateSzDisplay();
-      document.getElementById('anot-rot-val').textContent = S.anotRot + '°';
-      renderAnotacoes();
-    });
-    // Duplo clique — editar texto
-    g.addEventListener('dblclick', ev => {
-      ev.stopPropagation();
-      const novoTexto = prompt('Editar texto:', an.texto || '');
-      if (novoTexto === null) return;
-      an.texto = novoTexto;
-      renderAnotacoes();
-    });
-    g.addEventListener('mousedown', ev => {
-      if (ev.target.closest('.anot-del-btn,.anot-ctrl')) return;
-      ev.stopPropagation();
-      const img2 = document.getElementById('alcado-img');
-      const r2   = img2.getBoundingClientRect();
-      const startX = ev.clientX, startY = ev.clientY;
-      const origX1=an.x1,origY1=an.y1,origX2=an.x2,origY2=an.y2;
-      const origXm=an.xm,origYm=an.ym;
-      let moved = false;
-      const onMove = mv => {
-        moved = true;
-        const dx = (mv.clientX-startX)/r2.width*100;
-        const dy = (mv.clientY-startY)/r2.height*100;
-        an.x1=+(origX1+dx).toFixed(2); an.y1=+(origY1+dy).toFixed(2);
-        an.x2=+(origX2+dx).toFixed(2); an.y2=+(origY2+dy).toFixed(2);
-        if (an.xm!==undefined) { an.xm=+(origXm+dx).toFixed(2); an.ym=+(origYm+dy).toFixed(2); }
-        renderAnotacoes();
-      };
-      const onUp = () => {
-        document.removeEventListener('mousemove',onMove);
-        document.removeEventListener('mouseup',onUp);
-      };
-      document.addEventListener('mousemove',onMove);
-      document.addEventListener('mouseup',onUp);
-    });
-
-    svg.appendChild(g);
-  });
-
-  // Adicionar marker bidirecional para cotas (se não existir)
-  if (!svg.querySelector('#arrow-both')) {
-    const defs=svg.querySelector('defs');
-    ['arrow-both','arrow-both-s'].forEach((mid,i)=>{
-      const m=svgEl('marker',{id:mid,markerWidth:'8',markerHeight:'8',refX:i?'2':'6',refY:'3',orient:'auto'});
-      m.appendChild(svgEl('path',{d:i?'M8,0 L8,6 L0,3 z':'M0,0 L0,6 L8,3 z',fill:'currentColor'}));
-      defs.appendChild(m);
-    });
-  }
-
-  svg.style.pointerEvents = (S.mode==='ver'||S.mode==='anotar') ? 'all' : 'none';
-}
-
-function delAnotacao(id) {
-  S.anotacoes[S.activeKey] = (S.anotacoes[S.activeKey]||[]).filter(a=>a.id!==id);
-  renderAnotacoes();
-  toast('Anotação removida','ok');
-}
 
 // Re-render anotações ao mostrar imagem
 const _origShowImage = showImage;
@@ -1466,8 +1168,7 @@ function showImage(b64) {
     const btn = document.getElementById('btn-rot-confirm');
     if (btn) btn.style.display = (a && a.img && !a.rotacaoConfirmada && a.rotation && !a.imgRotated) ? 'block' : 'none';
     renderMarkers();
-    renderAnotacoes();
-  };
+    };
 }
 
 function renderMarkers() {
@@ -1526,7 +1227,7 @@ function startDrag(ev, id) {
 
 // Re-render ao resize
 let _rt;
-window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(S.activeKey){renderMarkers();renderAnotacoes();}},150);});
+window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(S.activeKey) renderMarkers();},150);});
 
 /* ══════════════════════════════════════════
    MATERIAIS
