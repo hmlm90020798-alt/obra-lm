@@ -974,7 +974,6 @@ window.confirmarRotacao = () => {
 
 
 // manter compatibilidade com código antigo
-window.setAnotSz = sz => {};
 
 
 window.setMode = m => {
@@ -984,11 +983,7 @@ window.setMode = m => {
   document.getElementById('btn-colocar').classList.toggle('on', m==='colocar');
   document.getElementById('img-wrap').classList.toggle('placing', m==='colocar');
   document.getElementById('canvas-hint').textContent =
-    m==='colocar' ? 'Clica na imagem para colocar hotspot' :
-    m==='anotar'  ? 'Clica para colocar anotação' : '';
-  // Tornar SVG interactivo só em modo anotar/ver
-  const svg = document.getElementById('anot-svg');
-  if (svg) svg.style.pointerEvents = m==='ver' ? 'all' : 'none';
+    m==='colocar' ? 'Clica na imagem para colocar hotspot' : '';
 };
 
 
