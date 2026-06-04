@@ -644,6 +644,7 @@ const S = {
   imgCache: {},  // { key: base64 }
   anotacoes: {}, // { key: [{ id, tipo, x1,y1, x2,y2, texto, cor }] }
   mode: 'ver',
+  Z: {scale:1, x:0, y:0},
   anotTool: 'texto',
   anotStep: null,
   anotFontSz: 12,
@@ -1233,15 +1234,37 @@ function startDrag(ev, id) {
 let _rt;
 window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(S.activeKey) renderMarkers();},150);});
 
-// Pan com rato quando zoom > 1
+// ── ZOOM & PAN no editor ─────────────────────────────────────
+function applyZoom() {
+  const iw = document.getElementById('img-wrap');
+  if (!iw) return;
+  if (S.Z.scale > 1) {
+    iw.style.transform = `scale(${S.Z.scale}) translate(${S.Z.x/S.Z.scale}px,${S.Z.y/S.Z.scale}px)`;
+    iw.style.cursor = 'grab';
+  } else {
+    iw.style.transform = '';
+    iw.style.cursor = '';
+  }
+}
+function zoomReset() { S.Z={scale:1,x:0,y:0}; applyZoom(); }
+
+// Wheel para zoom
+document.querySelector('.canvas')?.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const f = e.deltaY < 0 ? 1.15 : 0.87;
+  S.Z.scale = Math.min(8, Math.max(1, +(S.Z.scale*f).toFixed(2)));
+  if (S.Z.scale <= 1) { S.Z.x=0; S.Z.y=0; }
+  applyZoom();
+}, {passive:false});
+
+// Pan com rato
 (()=>{
-  const iw = ()=>document.getElementById('img-wrap');
   let dragging=false, startX=0, startY=0, origX=0, origY=0;
   document.addEventListener('mousedown', ev=>{
-    const w=iw(); if(!w||S.Z?.scale<=1) return;
-    if(ev.target.closest('.mk,.rp-body,.right,.left,.topbar,.canvas-bar')) return;
+    if(S.Z.scale<=1) return;
+    if(ev.target.closest('.mk,.rp-body,.right,.left,.topbar,.canvas-bar,.modal-bg')) return;
     dragging=true; startX=ev.clientX; startY=ev.clientY;
-    origX=S.Z?.x||0; origY=S.Z?.y||0;
+    origX=S.Z.x; origY=S.Z.y;
     ev.preventDefault();
   });
   document.addEventListener('mousemove', ev=>{

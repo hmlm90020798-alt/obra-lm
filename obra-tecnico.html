@@ -442,6 +442,28 @@ function zoomReset(){S.Z={scale:1,x:0,y:0};applyZoom();}
 window.zoom=f=>{if(f===0){zoomReset();return;}S.Z.scale=Math.min(5,Math.max(1,+(S.Z.scale*f).toFixed(2)));if(S.Z.scale<=1){S.Z.x=0;S.Z.y=0;}applyZoom();};
 document.getElementById('stage').addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.15:0.87);},{passive:false});
 
+// Pan com rato quando zoom > 1
+(()=>{
+  let dragging=false, startX=0, startY=0, origX=0, origY=0;
+  stage.addEventListener('mousedown', ev=>{
+    if(S.Z.scale<=1) return;
+    if(ev.target.closest('.pin-wrap,.popup,.swap-back,.zoom-btns')) return;
+    dragging=true; startX=ev.clientX; startY=ev.clientY;
+    origX=S.Z.x; origY=S.Z.y;
+    stage.style.cursor='grabbing';
+    ev.preventDefault();
+  });
+  document.addEventListener('mousemove', ev=>{
+    if(!dragging) return;
+    S.Z.x=origX+(ev.clientX-startX);
+    S.Z.y=origY+(ev.clientY-startY);
+    applyZoom();
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(dragging){ dragging=false; stage.style.cursor=''; }
+  });
+})();
+
 const stage=document.getElementById('stage');
 const imgLayer=document.getElementById('img-layer');
 stage.addEventListener('touchstart',e=>{
