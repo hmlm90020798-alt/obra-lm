@@ -1028,6 +1028,30 @@ function selTipo(id) {
 }
 window.selTipo = selTipo;
 
+function renderTipoGrid() {
+  const sel = document.getElementById('tipo-select');
+  if (!sel) return;
+  const allTipos = [...TIPOS, ...S.tiposGlobais, ...S.tiposCustom];
+  const grupos = [...new Set(allTipos.map(t=>t.grupo||'custom'))];
+  sel.innerHTML = '';
+  grupos.forEach(g => {
+    const grpTipos = allTipos.filter(t=>(t.grupo||'custom')===g);
+    if (!grpTipos.length) return;
+    const og = document.createElement('optgroup');
+    og.label = GRUPOS[g] || g;
+    grpTipos.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = (t.icone||t.sim||'') + ' ' + (t.nome||t.label||t.id);
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+  sel.value = curTipo;
+  updateTipoPreview();
+}
+window.renderTipoGrid = renderTipoGrid;
+
 function setSz(sz) {
   curSz=sz;
   document.querySelectorAll('.size-btn').forEach(b=>b.classList.toggle('on',b.dataset.sz===sz));
