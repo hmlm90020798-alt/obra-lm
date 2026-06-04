@@ -999,9 +999,7 @@ window.setMode = m => {
    CANVAS — click / mousemove
 ══════════════════════════════════════════ */
 document.getElementById('img-wrap').addEventListener('click', ev => {
-
-
-  if (S.mode==='anotar' && !ev.target.closest('  if (S.mode==='colocar') {
+  if (S.mode==='colocar') {
     if (!S.activeKey) return toast('Selecciona um alçado','err');
     const a = S.alcados.find(x=>x.key===S.activeKey);
     if (a?.img && !a.rotacaoConfirmada && a.rotation) return toast('Confirma a rotação antes de colocar hotspots','err');
@@ -1015,6 +1013,7 @@ document.getElementById('img-wrap').addEventListener('click', ev => {
     openRp(false);
     return;
   }
+});
 
 function updateTipoPreview() {
   const t    = getTipo(curTipo);
