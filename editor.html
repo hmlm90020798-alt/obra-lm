@@ -129,10 +129,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 .mat-del:hover { color: var(--red); }
 
 /* Tipos */
-.cor-btn { width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s;flex-shrink:0; }
-.cor-btn.on { border-color:#fff;transform:scale(1.2); }
-.ico-btn { width:30px;height:30px;border-radius:5px;border:1px solid var(--border);background:var(--raised);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .15s; }
-.ico-btn.on { border-color:var(--accent);background:var(--adim); }
+.cor-btn { width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s;flex-shrink:0; }
+.cor-btn.on { border-color:#fff;transform:scale(1.25);box-shadow:0 0 0 2px rgba(255,255,255,.2); }
+.ico-btn { width:26px;height:26px;border-radius:5px;border:1px solid var(--border);background:var(--raised);cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:all .15s; }
+.ico-btn.on { border-color:var(--accent);background:var(--adim);box-shadow:0 0 0 1px var(--accent); }
+.ico-btn:hover { border-color:var(--border2); }
 .tipo-row { display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;background:var(--raised);border:1px solid var(--border);border-radius:6px;margin-bottom:.25rem;font-size:.78rem; }
 .tipo-pin { width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.85rem;border:2px solid;background:rgba(8,10,14,.88);flex-shrink:0; }
 
@@ -459,6 +460,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
     </div>
 
     <div class="field">
+      <label>Link para alçado <span style="font-size:.6rem;color:var(--text3)">(botão no popup → navega)</span></label>
+      <select id="hs-link-alcado" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.78rem;padding:.42rem .65rem;border-radius:4px;outline:none">
+        <option value="">— Nenhum —</option>
+      </select>
+    </div>
+    <div class="field">
       <label>Mostrar alçado ao clicar <span style="font-size:.6rem;color:var(--text3)">(substitui imagem, hotspots mantêm-se)</span></label>
       <select id="hs-alcado-swap" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.78rem;padding:.42rem .65rem;border-radius:4px;outline:none">
         <option value="">— Nenhum —</option>
@@ -481,36 +488,54 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 <!-- Alçado -->
 <!-- MODAL TIPO HOTSPOT -->
 <div class="modal-bg" id="modal-tipo">
-  <div class="modal">
+  <div class="modal" style="max-width:340px">
     <div class="modal-title" id="modal-tipo-title">Novo <em>Tipo</em></div>
+
+    <!-- Preview em destaque no topo -->
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.65rem .85rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:.85rem">
+      <div id="tipo-prev-pin" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;border:2px solid #e8a234;background:rgba(8,10,14,.92);flex-shrink:0;transition:all .2s">⚡</div>
+      <div>
+        <div id="tipo-prev-nome" style="font-size:.88rem;font-weight:600;line-height:1.2">Nome do tipo</div>
+        <div id="tipo-prev-seq" style="font-family:var(--mono);font-size:.6rem;color:var(--text3);margin-top:.1rem">Numeração: 1, 2, 3…</div>
+      </div>
+    </div>
+
     <div class="f"><label>Nome</label><input type="text" id="tipo-nome" placeholder="ex: Tomada, Água fria…"></div>
-    <div class="f">
-      <label>Sequência</label>
-      <div style="display:flex;gap:.4rem">
-        <button id="tipo-seq-num" class="rot-btn" onclick="setTipoSeq('numero')" style="flex:1;font-size:.72rem;background:var(--accent);color:#fff;border-color:var(--accent)">1,2,3 Números</button>
-        <button id="tipo-seq-let" class="rot-btn" onclick="setTipoSeq('letra')" style="flex:1;font-size:.72rem">A,B,C Letras</button>
+
+    <!-- Cor + Sequência na mesma linha -->
+    <div style="display:flex;gap:.75rem;margin-bottom:.65rem">
+      <div style="flex:1">
+        <div class="flabel" style="font-size:.65rem;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem">Cor</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem" id="tipo-cores">
+          <button class="cor-btn on" data-cor="#e8a234" onclick="setTipoCor('#e8a234',this)" style="background:#e8a234"></button>
+          <button class="cor-btn" data-cor="#4f7cff" onclick="setTipoCor('#4f7cff',this)" style="background:#4f7cff"></button>
+          <button class="cor-btn" data-cor="#2dd898" onclick="setTipoCor('#2dd898',this)" style="background:#2dd898"></button>
+          <button class="cor-btn" data-cor="#f05252" onclick="setTipoCor('#f05252',this)" style="background:#f05252"></button>
+          <button class="cor-btn" data-cor="#c471ed" onclick="setTipoCor('#c471ed',this)" style="background:#c471ed"></button>
+          <button class="cor-btn" data-cor="#38bdf8" onclick="setTipoCor('#38bdf8',this)" style="background:#38bdf8"></button>
+          <button class="cor-btn" data-cor="#fb923c" onclick="setTipoCor('#fb923c',this)" style="background:#fb923c"></button>
+          <button class="cor-btn" data-cor="#a3e635" onclick="setTipoCor('#a3e635',this)" style="background:#a3e635"></button>
+          <button class="cor-btn" data-cor="#f0abfc" onclick="setTipoCor('#f0abfc',this)" style="background:#f0abfc"></button>
+          <button class="cor-btn" data-cor="#ffffff" onclick="setTipoCor('#ffffff',this)" style="background:#fff;border-color:#555"></button>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div class="flabel" style="font-size:.65rem;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem">Sequência</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem">
+          <button id="tipo-seq-num" onclick="setTipoSeq('numero')" style="padding:.38rem .5rem;border-radius:5px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-family:var(--mono);font-size:.68rem;cursor:pointer;transition:all .15s">1, 2, 3…</button>
+          <button id="tipo-seq-let" onclick="setTipoSeq('letra')" style="padding:.38rem .5rem;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:var(--mono);font-size:.68rem;cursor:pointer;transition:all .15s">A, B, C…</button>
+        </div>
       </div>
     </div>
-    <div class="f">
-      <label>Cor</label>
-      <div style="display:flex;gap:.35rem;flex-wrap:wrap" id="tipo-cores">
-        <button class="cor-btn on" data-cor="#e8a234" onclick="setTipoCor('#e8a234',this)" style="background:#e8a234"></button>
-        <button class="cor-btn" data-cor="#4f7cff" onclick="setTipoCor('#4f7cff',this)" style="background:#4f7cff"></button>
-        <button class="cor-btn" data-cor="#2dd898" onclick="setTipoCor('#2dd898',this)" style="background:#2dd898"></button>
-        <button class="cor-btn" data-cor="#f05252" onclick="setTipoCor('#f05252',this)" style="background:#f05252"></button>
-        <button class="cor-btn" data-cor="#c471ed" onclick="setTipoCor('#c471ed',this)" style="background:#c471ed"></button>
-        <button class="cor-btn" data-cor="#38bdf8" onclick="setTipoCor('#38bdf8',this)" style="background:#38bdf8"></button>
-        <button class="cor-btn" data-cor="#fb923c" onclick="setTipoCor('#fb923c',this)" style="background:#fb923c"></button>
-        <button class="cor-btn" data-cor="#a3e635" onclick="setTipoCor('#a3e635',this)" style="background:#a3e635"></button>
-        <button class="cor-btn" data-cor="#ffffff" onclick="setTipoCor('#ffffff',this)" style="background:#fff;border-color:#555"></button>
-      </div>
-    </div>
-    <div class="f">
-      <label>Ícone</label>
-      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.35rem" id="tipo-icones">
+
+    <!-- Ícone -->
+    <div style="margin-bottom:.65rem">
+      <div class="flabel" style="font-size:.65rem;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem">Ícone</div>
+      <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:.25rem;margin-bottom:.35rem" id="tipo-icones">
         <button class="ico-btn on" data-ico="⚡" onclick="setTipoIco('⚡',this)">⚡</button>
         <button class="ico-btn" data-ico="💧" onclick="setTipoIco('💧',this)">💧</button>
         <button class="ico-btn" data-ico="🔥" onclick="setTipoIco('🔥',this)">🔥</button>
+        <button class="ico-btn" data-ico="❄" onclick="setTipoIco('❄',this)">❄</button>
         <button class="ico-btn" data-ico="⬡" onclick="setTipoIco('⬡',this)">⬡</button>
         <button class="ico-btn" data-ico="■" onclick="setTipoIco('■',this)">■</button>
         <button class="ico-btn" data-ico="●" onclick="setTipoIco('●',this)">●</button>
@@ -518,9 +543,19 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
         <button class="ico-btn" data-ico="▲" onclick="setTipoIco('▲',this)">▲</button>
         <button class="ico-btn" data-ico="◆" onclick="setTipoIco('◆',this)">◆</button>
         <button class="ico-btn" data-ico="✦" onclick="setTipoIco('✦',this)">✦</button>
+        <button class="ico-btn" data-ico="↓" onclick="setTipoIco('↓',this)">↓</button>
+        <button class="ico-btn" data-ico="∿" onclick="setTipoIco('∿',this)">∿</button>
+        <button class="ico-btn" data-ico="◎" onclick="setTipoIco('◎',this)">◎</button>
+        <button class="ico-btn" data-ico="✓" onclick="setTipoIco('✓',this)">✓</button>
+        <button class="ico-btn" data-ico="!" onclick="setTipoIco('!',this)">!</button>
+        <button class="ico-btn" data-ico="i" onclick="setTipoIco('i',this)">i</button>
+        <button class="ico-btn" data-ico="◈" onclick="setTipoIco('◈',this)">◈</button>
+        <button class="ico-btn" data-ico="⊕" onclick="setTipoIco('⊕',this)">⊕</button>
+        <button class="ico-btn" data-ico="⊗" onclick="setTipoIco('⊗',this)">⊗</button>
       </div>
-      <input type="text" id="tipo-ico-custom" placeholder="ou escreve aqui (letra, emoji…)" maxlength="2" oninput="setTipoIcoCustom(this.value)" style="font-size:1rem;text-align:center">
+      <input type="text" id="tipo-ico-custom" placeholder="Personalizado (letra, emoji…)" maxlength="2" oninput="setTipoIcoCustom(this.value)" style="font-size:.82rem;text-align:center;width:100%">
     </div>
+
     <div class="f" style="flex-direction:row;align-items:center;gap:.5rem">
       <label style="white-space:nowrap;margin:0;font-size:.72rem">Âmbito</label>
       <select id="tipo-ambito" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.72rem;padding:.3rem .5rem;border-radius:4px;outline:none;flex:1">
@@ -528,14 +563,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
         <option value="obra">Só esta obra</option>
       </select>
     </div>
-    <div style="background:var(--raised);border:1px solid var(--border);border-radius:6px;padding:.55rem .75rem;margin-top:.3rem;display:flex;align-items:center;gap:.6rem">
-      <div id="tipo-prev-pin" style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1rem;border:2px solid #e8a234;background:rgba(8,10,14,.88)">⚡</div>
-      <div style="flex:1">
-        <div id="tipo-prev-nome" style="font-size:.82rem;font-weight:500">Nome do tipo</div>
-        <div id="tipo-prev-seq" style="font-family:var(--mono);font-size:.6rem;color:var(--text3)">Numeração: 1, 2, 3…</div>
-      </div>
-    </div>
-    <div class="modal-actions" style="margin-top:.75rem">
+
+    <div class="modal-actions" style="margin-top:.85rem">
       <button class="btn btn-ghost" onclick="closeModal('modal-tipo')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveTipo()">Guardar</button>
     </div>
@@ -1080,6 +1109,7 @@ function openRp(editMode) {
     document.getElementById('hs-cota').value  = '';
     document.getElementById('hs-tec').value   = '';
     document.getElementById('hs-url').value   = '';
+    const laEl=document.getElementById('hs-link-alcado');if(laEl)laEl.value='';
     document.getElementById('hs-bib').checked = false;
     document.getElementById('rp-coords').textContent = S.pendingXY
       ? `x:${S.pendingXY.x}%  y:${S.pendingXY.y}%` : '';
@@ -1089,6 +1119,12 @@ function openRp(editMode) {
   renderTipoGrid();
   // Popular dropdown de alçados (excluindo o actual)
 
+  const selAlc = document.getElementById('hs-link-alcado');
+  if (selAlc) {
+    selAlc.innerHTML = '<option value="">— Nenhum —</option>' +
+      S.alcados.filter(a=>a.key!==S.activeKey && !a.oculto)
+        .map(a=>`<option value="${a.key}">${a.nome}</option>`).join('');
+  }
   const selSwap = document.getElementById('hs-alcado-swap');
   if (selSwap) {
     selSwap.innerHTML = '<option value="">— Nenhum —</option>' +
@@ -1166,6 +1202,7 @@ window.saveHs = () => {
   const cota       = document.getElementById('hs-cota').value.trim();
   const tec        = document.getElementById('hs-tec').value.trim();
   const url        = document.getElementById('hs-url').value.trim();
+  const linkAlcado = document.getElementById('hs-link-alcado')?.value || '';
   const alcadoSwap = document.getElementById('hs-alcado-swap').value;
   const toBib      = document.getElementById('hs-bib').checked;
   if (!label) return toast('Insere um label','err');
@@ -1176,7 +1213,7 @@ window.saveHs = () => {
   if (S.editId) {
     const h = S.hotspots[key].find(x=>x.id===S.editId);
     if (h) {
-      Object.assign(h, { label, cota, tec, url, alcadoSwap, tipo:curTipo, pinSize:curSz });
+      Object.assign(h, { label, cota, tec, url, linkAlcado, alcadoSwap, tipo:curTipo, pinSize:curSz });
     }
     const bh = S.biblioteca.find(b=>b.id===h?.bibId);
     if (bh) Object.assign(bh, { label, cota, tec, cli, tipo:curTipo });
@@ -1225,6 +1262,8 @@ window.editHs = id => {
   document.querySelectorAll('.mk').forEach(m=>m.classList.toggle('on',m.id==='mk-'+id));
   openRp(true);
   setTimeout(()=>{
+    const selAlc2=document.getElementById('hs-link-alcado');
+    if (selAlc2 && h.linkAlcado) selAlc2.value=h.linkAlcado;
     const selSwap=document.getElementById('hs-alcado-swap');
     if (selSwap && h.alcadoSwap) selSwap.value=h.alcadoSwap;
 
