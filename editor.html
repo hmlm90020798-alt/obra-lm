@@ -590,11 +590,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); font
 <div class="modal-bg" id="modal-share">
   <div class="modal">
     <div class="modal-title">Partilhar <em>Obra</em></div>
-    <div class="plabel" style="margin-bottom:.4rem">Técnico</div>
-    <div class="share-box" id="share-tec" onclick="copyText(this.textContent,'Link técnico copiado ✓')"></div>
-    <div class="share-hint">Clica para copiar</div>
-    <div class="plabel" style="margin:.85rem 0 .4rem">Cliente</div>
-    <div class="share-box" id="share-cli" onclick="copyText(this.textContent,'Link cliente copiado ✓')"></div>
+    <div class="plabel" style="margin-bottom:.4rem">Link Técnico</div>
+    <div class="share-box" id="share-tec" onclick="copyText(this.textContent,'Link copiado ✓')"></div>
     <div class="share-hint">Clica para copiar</div>
     <div class="modal-actions" style="margin-top:1rem">
       <button class="btn btn-secondary" onclick="closeModal('modal-share')">Fechar</button>
@@ -1236,6 +1233,26 @@ function startDrag(ev, id) {
 let _rt;
 window.addEventListener('resize',()=>{clearTimeout(_rt);_rt=setTimeout(()=>{if(S.activeKey) renderMarkers();},150);});
 
+// Pan com rato quando zoom > 1
+(()=>{
+  const iw = ()=>document.getElementById('img-wrap');
+  let dragging=false, startX=0, startY=0, origX=0, origY=0;
+  document.addEventListener('mousedown', ev=>{
+    const w=iw(); if(!w||S.Z?.scale<=1) return;
+    if(ev.target.closest('.mk,.rp-body,.right,.left,.topbar,.canvas-bar')) return;
+    dragging=true; startX=ev.clientX; startY=ev.clientY;
+    origX=S.Z?.x||0; origY=S.Z?.y||0;
+    ev.preventDefault();
+  });
+  document.addEventListener('mousemove', ev=>{
+    if(!dragging) return;
+    S.Z.x = origX+(ev.clientX-startX);
+    S.Z.y = origY+(ev.clientY-startY);
+    applyZoom();
+  });
+  document.addEventListener('mouseup', ()=>{ dragging=false; });
+})();
+
 /* ══════════════════════════════════════════
    MATERIAIS
 ══════════════════════════════════════════ */
@@ -1370,7 +1387,6 @@ function getBase() {
 function updateShareLinks() {
   const base=getBase();
   document.getElementById('share-tec').textContent=`${base}obra-tecnico.html?obra=${S.obraId}`;
-  document.getElementById('share-cli').textContent=`${base}obra-cliente.html?obra=${S.obraId}`;
 }
 window.copyLink = tipo => {
   const url = tipo==='tecnico'
