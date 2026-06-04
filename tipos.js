@@ -37,9 +37,24 @@ export const PIN_MAX   = { s:28,   m:40,   l:56,   xl:72  };
  * Se não encontrar, devolve o primeiro tipo built-in.
  */
 export function getTipo(id, tiposCustom = []) {
-  return TIPOS.find(t => t.id === id)
-    || tiposCustom.find(t => t.id === id)
-    || TIPOS[0];
+  const builtin = TIPOS.find(t => t.id === id);
+  if (builtin) return builtin;
+  const custom  = tiposCustom.find(t => t.id === id);
+  if (custom) return normalizeTipo(custom);
+  return TIPOS[0];
+}
+
+// Normalizar tipo personalizado para formato compatível com pinSVG
+function normalizeTipo(t) {
+  return {
+    id:    t.id,
+    label: t.nome || t.label || t.id,
+    forma: t.forma || 'square',
+    sim:   t.icone || t.sim || '●',
+    cor:   t.cor   || '#e8a234',
+    grupo: t.grupo || 'custom',
+    sequencia: t.sequencia || 'numero',
+  };
 }
 
 /**
@@ -52,7 +67,10 @@ export function getTipo(id, tiposCustom = []) {
 export function pinSVG(tipoId, label, sz, tiposCustom = []) {
   const t    = getTipo(tipoId, tiposCustom);
   const cor  = t.cor;
-  const sim  = tipoId === 'equipamento' ? label : t.sim;
+  // Para tipos personalizados, usar o ícone directamente
+  // label é passado pelo caller (número ou letra conforme sequência)
+  const isCustom = !TIPOS.find(x=>x.id===tipoId);
+  const sim  = (tipoId === 'equipamento' || isCustom) ? (label || t.sim) : t.sim;
   const cx   = sz / 2, cy = sz / 2, r = sz / 2 - 2;
   const fill = 'rgba(8,10,14,.92)';
 
